@@ -47,7 +47,7 @@ Fresh Ubuntu server
 
 ```bash
 # 1. Check the server before changing it
-sudo bash scripts/00-preflight-check.sh
+sudo bash scripts/00-preflight-check.sh --profile ai-stack
 
 # 2. Prepare SSH keys on the client machine
 bash scripts/01-setup-ssh-keys.sh
@@ -67,7 +67,7 @@ docker compose --env-file .env up -d
 sudo bash ../scripts/99-ready-checks.sh
 ```
 
-For the full installation path, use [QUICKSTART.md](QUICKSTART.md). For GitHub, VPS/root, deploy and backup key scenarios, see [SSH Keys](docs/ssh-keys.md).
+For the full installation path, use [QUICKSTART.md](QUICKSTART.md). To understand what each script does before running it, see [Scripts Catalog](docs/scripts-catalog.md). For GitHub, VPS/root, deploy and backup key scenarios, see [SSH Keys](docs/ssh-keys.md).
 
 ## Real Use Cases
 
@@ -94,8 +94,10 @@ For the full installation path, use [QUICKSTART.md](QUICKSTART.md). For GitHub, 
 |-------|-------------|
 | [Quick Start](QUICKSTART.md) | End-to-end installation path |
 | [System Requirements](requirements/system-requirements.md) | CPU, RAM, disk and OS requirements |
+| [VPS Profiles](docs/profiles.md) | Minimal, proxy, docker-host, web and ai-stack profiles |
 | [Server Security](docs/01-server-security.md) | SSH, UFW, fail2ban and hardening |
 | [SSH Keys](docs/ssh-keys.md) | Key naming, GitHub/VPS/deploy scenarios and permissions |
+| [Scripts Catalog](docs/scripts-catalog.md) | What each script does, when to run it and what it does not do |
 | [Security Hardening Details](docs/01-server-security-hardening.md) | Advanced SSH, sysctl and audit notes |
 | [Docker Installation](docs/02-docker-installation.md) | Docker Engine and Compose setup |
 | [Infrastructure Setup](docs/03-infrastructure-setup.md) | Stack overview and deployment order |

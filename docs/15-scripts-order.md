@@ -2,11 +2,11 @@
 
 # Последовательность и нумерация скриптов
 
-Цель: единая логика запуска, без ошибок из‑за устаревших имён.
+Цель: единая логика запуска, без ошибок из‑за устаревших имён. Если нужно понять назначение каждого файла до запуска, используйте [каталог scripts](scripts-catalog.md).
 
 ## 1. Актуальный порядок выполнения
 
-1. `scripts/00-preflight-check.sh` — preflight проверки (VPS)
+1. `scripts/00-preflight-check.sh --profile <profile>` — profile-aware preflight проверки (VPS)
 2. `scripts/01-setup-ssh-keys.sh` — SSH-ключи для GitHub/VPS/deploy/backup сценариев (клиентская машина)
 3. `scripts/02-secure-server.sh` — базовая безопасность сервера
 4. `scripts/03-install-docker.sh` — установка Docker/Compose
@@ -23,11 +23,12 @@
 
 ## 2. Важно
 - Нумерация **историческая**, но **порядок запуска** указан выше.
+- `scripts/00-preflight-check.sh` больше не отбраковывает маленький VPS только потому, что он не подходит для `ai-stack`; используйте `--profile minimal|proxy|docker-host|web|ai-stack`.
 - Устаревшие имена **удалены** — используйте только актуальные.
 
 ## 3. Пример запуска по порядку
 ```bash
-sudo bash scripts/00-preflight-check.sh
+sudo bash scripts/00-preflight-check.sh --profile ai-stack
 bash scripts/01-setup-ssh-keys.sh
 sudo bash scripts/02-secure-server.sh
 sudo bash scripts/03-install-docker.sh
@@ -42,5 +43,6 @@ sudo bash scripts/99-ready-checks.sh
 ## See Also
 
 - [Quick Start](../QUICKSTART.md) — короткий end-to-end walkthrough.
+- [Scripts Catalog](scripts-catalog.md) — назначение scripts и profile flows.
 - [Ready Rules](14-ready-rules.md) — критерии завершения установки.
 - [Troubleshooting](11-troubleshooting.md) — диагностика при сбоях на этапах.

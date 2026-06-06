@@ -1,86 +1,78 @@
 # Системные требования
 
-## Минимальные требования
+Требования зависят от профиля сервера. `4GB RAM / 50GB disk` относится к полному `ai-stack`, а не к каждому маленькому VPS.
 
-### Сервер
-- **ОС:** Ubuntu 22.04 LTS или Ubuntu 24.04 LTS
-- **Архитектура:** x86_64 (amd64)
-- **RAM:** 4 GB (рекомендуется 8 GB)
-- **CPU:** 2 ядра (рекомендуется 4+)
-- **Диск:** 50 GB свободного места (рекомендуется 100 GB+)
-- **Сеть:** Стабильное интернет-соединение
+## Общая база
 
-### Для production окружения
-- **RAM:** 16 GB+
-- **CPU:** 4+ ядра
-- **Диск:** 200 GB+ SSD
-- **Сеть:** Минимальная задержка, высокая пропускная способность
+| Требование | Значение |
+|---|---|
+| ОС | Ubuntu Server 22.04 LTS или 24.04 LTS |
+| Архитектура | `x86_64` / `amd64` рекомендуется |
+| Доступ | `sudo` или root для server-side setup scripts |
+| Сеть | Стабильное интернет-соединение для apt/Docker downloads |
+| Bash | 4.4+ |
+
+## Требования по профилям
+
+| Profile | Назначение | Минимум | Рекомендуется | Docker нужен |
+|---|---|---:|---:|---|
+| `minimal` | Базовая безопасность маленького VPS | 512MB RAM, 5GB disk | 1GB RAM, swap | нет |
+| `proxy` | x-ui/3x-ui/VPN/proxy panel base | 512MB RAM, 10GB disk | 1GB RAM, swap | нет, если панель не требует Docker |
+| `docker-host` | Маленький Docker host | 1GB RAM, 10GB disk | 2GB RAM, swap | да |
+| `web` | Небольшой web/app VPS | 1GB RAM, 15GB disk | 2GB RAM, swap | optional |
+| `ai-stack` | n8n/Supabase/Redis/pgvector stack | 4GB RAM, 50GB disk | 8GB+ RAM, 100GB+ SSD | да |
+
+## Уровни preflight
+
+`scripts/00-preflight-check.sh` классифицирует сервер по профилям:
+
+| State | Смысл | Что делать |
+|---|---|---|
+| `OK` | Сервер подходит для профиля | Можно продолжать соответствующий flow |
+| `WARN` | Профиль возможен с ограничениями | Прочитать рекомендацию: часто нужен swap, больше RAM или осторожность с нагрузкой |
+| `NO` | Ресурсов недостаточно для профиля | Не запускать этот профиль на текущем сервере |
+
+Fatal-состояния ограничены реальными blockers: неподдерживаемая ОС, отсутствие root/sudo для system checks, критически малый диск даже для `minimal`.
+
+Перед изменениями выполните:
+
+```bash
+sudo bash scripts/00-preflight-check.sh
+sudo bash scripts/00-preflight-check.sh --profile minimal
+sudo bash scripts/00-preflight-check.sh --profile ai-stack
+```
 
 ## Программное обеспечение
 
 ### Базовые компоненты
-- **Bash:** версия 4.4+
-- **curl:** для загрузки файлов
-- **wget:** альтернатива curl
-- **git:** для клонирования репозиториев (опционально)
+
+- `curl` или `wget` для загрузки и health checks.
+- `git` опционально, если сервер сам клонирует репозиторий.
+- `ufw`, `fail2ban`, `unattended-upgrades` устанавливаются security scripts при необходимости.
 
 ### После установки Docker
-- **Docker:** версия 24.0+
-- **Docker Compose:** версия 2.20+
+
+- Docker Engine 24.0+.
+- Docker Compose 2.20+.
+
+Docker нужен для `docker-host` и `ai-stack`. Он не является обязательным для `minimal` и `proxy`.
 
 ## Сетевые требования
 
-### Порты, которые будут использоваться
+| Сценарий | Порты |
+|---|---|
+| SSH | Текущий SSH port, обычно `22/tcp` |
+| `minimal` | Только SSH и явно разрешённые admin ports |
+| `proxy` | SSH + вручную выбранные service ports после установки панели |
+| `web` | SSH + `80/tcp`, `443/tcp` при reverse proxy/HTTPS path |
+| `ai-stack` | SSH + public reverse proxy ports; DB/cache/internal services должны оставаться закрытыми наружу |
 
-| Сервис | Порт | Протокол | Описание |
-|--------|------|----------|----------|
-| SSH | 22 | TCP | Удалённый доступ (рекомендуется изменить) |
-| Docker | 2375/2376 | TCP | Docker daemon (опционально) |
-| Supabase API | 54321 | TCP | Supabase API Gateway |
-| Supabase DB | 54322 | TCP | PostgreSQL |
-| Supabase Studio | 54323 | TCP | Supabase Dashboard |
-| PgBouncer | 6432 | TCP | PostgreSQL connection pool |
-| n8n | 5678 | TCP | n8n Web Interface |
-| Redis | 6379 | TCP | Redis Server |
-| Prometheus | 9090 | TCP | Metrics |
-| Grafana | 3000 | TCP | Dashboards |
-| Nginx (опционально) | 80, 443 | TCP | Reverse Proxy |
+Внутренние порты Supabase, PostgreSQL, Redis, PgBouncer, n8n, Prometheus и Grafana не должны открываться наружу без явной reverse proxy/firewall стратегии.
 
-### Firewall
-- UFW должен быть настроен для разрешения необходимых портов
-- Рекомендуется закрыть все порты кроме необходимых
+## Production рекомендации
 
-## Права доступа
-
-- **sudo права:** Требуются для всех скриптов установки
-- **Docker группа:** Пользователь должен быть добавлен в группу docker
-
-## Проверка системы
-
-Перед началом установки выполните:
-
-```bash
-# Проверка версии Ubuntu
-lsb_release -a
-
-# Проверка доступной памяти
-free -h
-
-# Проверка дискового пространства
-df -h
-
-# Проверка CPU
-lscpu
-
-# Проверка сетевых интерфейсов
-ip addr show
-```
-
-## Рекомендации для production
-
-1. **Мониторинг:** Установите систему мониторинга (Prometheus, Grafana)
-2. **Резервное копирование:** Настройте автоматические бэкапы
-3. **Логирование:** Настройте централизованное логирование
-4. **SSL/TLS:** Используйте Let's Encrypt для HTTPS
-5. **Балансировка нагрузки:** Для высоких нагрузок используйте load balancer
-
+1. Настройте monitoring и alerts для production workload.
+2. Настройте backup до хранения важных данных.
+3. Используйте HTTPS для публичных web endpoints.
+4. Держите `.env` и generated secrets вне git и публичных логов.
+5. Для `ai-stack` закладывайте запас RAM/CPU под Supabase, n8n workers и Redis queue mode.
