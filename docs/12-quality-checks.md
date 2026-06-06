@@ -12,7 +12,7 @@ docker compose config
 
 ## 1.1 Автоматический ready‑чек
 ```bash
-sudo bash scripts/99-ready-checks.sh
+sudo bash scripts/99-ready-checks.sh --profile ai-stack
 ```
 
 ## 2. Проверка скриптов (shellcheck)
@@ -20,7 +20,7 @@ sudo bash scripts/99-ready-checks.sh
 bash scripts/98-verify-scripts.sh
 ```
 
-Скрипт запускает `bash -n scripts/*.sh` и, если установлен ShellCheck, `shellcheck scripts/*.sh`.
+Скрипт запускает Bash syntax checks для first-party scripts и, если установлен ShellCheck, статический анализ.
 
 Установить ShellCheck вручную:
 

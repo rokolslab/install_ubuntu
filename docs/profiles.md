@@ -43,7 +43,8 @@ Fatal errors используются только для blockers: не-Ubuntu 
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile minimal
 bash scripts/01-setup-ssh-keys.sh
-sudo bash scripts/02-secure-server.sh
+sudo bash scripts/02-security-baseline.sh --profile minimal
+sudo bash scripts/99-ready-checks.sh --profile minimal
 ```
 
 Ожидаемые предупреждения: Docker и `.env` могут отсутствовать.
@@ -56,6 +57,7 @@ sudo bash scripts/02-secure-server.sh
 sudo bash scripts/00-preflight-check.sh --profile proxy
 bash scripts/01-setup-ssh-keys.sh
 sudo bash scripts/02-security-baseline.sh --profile proxy --allow-port <service-port>
+sudo bash scripts/99-ready-checks.sh --profile proxy
 ```
 
 Не открывайте panel/service ports вслепую. Если порт ещё неизвестен, запустите baseline без `--allow-port`, установите панель, затем явно разрешите только нужный порт.
@@ -67,8 +69,9 @@ sudo bash scripts/02-security-baseline.sh --profile proxy --allow-port <service-
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile docker-host
 bash scripts/01-setup-ssh-keys.sh
-sudo bash scripts/02-secure-server.sh
-sudo bash scripts/03-install-docker.sh
+sudo bash scripts/02-security-baseline.sh --profile docker-host
+sudo bash scripts/03-install-docker.sh --profile docker-host
+sudo bash scripts/99-ready-checks.sh --profile docker-host
 ```
 
 Если preflight показывает `WARN`, обычно включите swap или увеличьте RAM перед постоянными Docker workloads.
@@ -84,8 +87,9 @@ sudo bash scripts/security/swap.sh --size 1G
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile web
 bash scripts/01-setup-ssh-keys.sh
-sudo bash scripts/02-secure-server.sh
-sudo bash scripts/08-setup-nginx.sh
+sudo bash scripts/02-security-baseline.sh --profile web
+sudo bash scripts/08-setup-nginx.sh --profile web
+sudo bash scripts/99-ready-checks.sh --profile web
 ```
 
 `80/443` относятся к web/reverse proxy сценарию. Firewall module открывает их для `web`/`ai-stack`, но не для `minimal`, `proxy` или `docker-host` без явного `--allow-port`.
@@ -97,12 +101,12 @@ sudo bash scripts/08-setup-nginx.sh
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile ai-stack
 bash scripts/01-setup-ssh-keys.sh
-sudo bash scripts/02-secure-server.sh
-sudo bash scripts/03-install-docker.sh
-sudo bash scripts/12-generate-secrets.sh
+sudo bash scripts/02-security-baseline.sh --profile ai-stack
+sudo bash scripts/03-install-docker.sh --profile ai-stack
+sudo bash scripts/12-generate-secrets.sh --profile ai-stack
 cd docker-compose
 docker compose --env-file .env up -d
-sudo bash ../scripts/99-ready-checks.sh
+sudo bash ../scripts/99-ready-checks.sh --profile ai-stack
 ```
 
 `ai-stack` включает тяжёлые сервисы: Supabase/PostgreSQL, Redis, pgvector, PgBouncer, n8n, monitoring path. Не используйте его как default для маленького VPS.

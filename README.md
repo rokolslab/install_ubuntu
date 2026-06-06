@@ -1,20 +1,20 @@
 # install_ubuntu
 
-> Secure Ubuntu/VPS bootstrap for self-hosted AI automation: Docker, n8n, Supabase, Redis, pgvector, monitoring, backups and production-ready checks.
+> Secure Ubuntu/VPS bootstrap with profile-aware paths: minimal hardening, proxy/VPN base, Docker host, web server, or full AI automation stack.
 
-`install_ubuntu` is a practical infrastructure starter kit for AI automation projects. It helps prepare a clean Ubuntu server for real workloads: Telegram bots, LLM workflows, RAG systems, internal automation, and self-hosted services.
+`install_ubuntu` is a practical infrastructure starter kit for Ubuntu/VPS servers. It can prepare a tiny VPS for safe baseline hardening or a larger server for AI automation workloads: Telegram bots, LLM workflows, RAG systems, internal automation, and self-hosted services.
 
-This repository fits the RoKols2017 stack: **Linux/VPS · Docker · Python/LLM infrastructure · Telegram bots · RAG · automation workflows**. It is not a demo setup. It is a repeatable path from a fresh server to a safer Docker-based AI environment.
+This repository fits the RoKols2017 stack: **Linux/VPS · Docker · Python/LLM infrastructure · Telegram bots · RAG · automation workflows**. It is not a blind one-command installer. Choose a profile first, then run only the scripts needed for that server.
 
 ## Why It Exists
 
-Most AI automation projects need the same foundation before product work starts:
+Most self-hosted projects need the same foundation before product work starts:
 
 - hardened SSH access, firewall, fail2ban and security updates;
-- Docker and Docker Compose installed correctly;
-- PostgreSQL/Supabase, Redis and pgvector ready for workflows and RAG;
-- n8n main/worker setup for automation pipelines;
-- Nginx, SSL, monitoring, backups and readiness checks for production use.
+- Docker and Docker Compose installed correctly when containers are needed;
+- PostgreSQL/Supabase, Redis and pgvector for AI workflows and RAG on larger hosts;
+- n8n main/worker setup for automation pipelines on the `ai-stack` profile;
+- Nginx, SSL, monitoring, backups and readiness checks when the selected profile needs them.
 
 This repo turns that foundation into documented steps, scripts and compose files.
 
@@ -24,47 +24,45 @@ This repo turns that foundation into documented steps, scripts and compose files
 |------|----------|
 | Server baseline | Ubuntu hardening, SSH keys, UFW, fail2ban, unattended upgrades |
 | Container runtime | Docker Engine, Docker Compose, daemon configuration |
-| AI automation stack | n8n, Redis, Supabase/PostgreSQL, pgvector, PgBouncer |
+| AI automation stack | n8n, Redis, Supabase/PostgreSQL, pgvector, PgBouncer for `ai-stack` |
 | Production support | Nginx reverse proxy, SSL path, monitoring, backups, ready checks |
 | Safety | Secret generation, closed local ports, healthchecks, version-pinned compose |
 | Documentation | Step-by-step guides for VPS and local server installation |
 
-## Infrastructure Flow
+## Profile Flows
 
-```text
-Fresh Ubuntu server
-  -> preflight check
-  -> SSH keys from client machine
-  -> server hardening
-  -> Docker installation
-  -> Supabase + PostgreSQL + pgvector
-  -> Redis + n8n main/worker
-  -> optional Nginx reverse proxy
-  -> monitoring, backups, ready checks
-```
+| Profile | Use when | Minimum path |
+|---------|----------|--------------|
+| `minimal` | Small VPS hardening only | preflight, SSH keys, security baseline, ready checks |
+| `proxy` | Base for x-ui/3x-ui/VPN/proxy panel | minimal path + explicit service ports |
+| `docker-host` | Small container host | minimal path + Docker install |
+| `web` | Small web/app server | minimal path + HTTP/HTTPS reverse proxy |
+| `ai-stack` | Full n8n/Supabase/Redis/pgvector stack | Docker, secrets, compose stack, service ready checks |
+
+`4GB RAM / 50GB disk` belongs to `ai-stack`, not to every VPS. A `1 vCPU / 1GB RAM` server can still be valid for `minimal` or `proxy` with warnings.
 
 ## Quick Start
 
+Minimal VPS hardening:
+
 ```bash
-# 1. Check the server before changing it
-sudo bash scripts/00-preflight-check.sh --profile ai-stack
-
-# 2. Prepare SSH keys on the client machine
+sudo bash scripts/00-preflight-check.sh --profile minimal
 bash scripts/01-setup-ssh-keys.sh
+sudo bash scripts/02-security-baseline.sh --profile minimal
+sudo bash scripts/99-ready-checks.sh --profile minimal
+```
 
-# 3. Harden the server
-sudo bash scripts/02-secure-server.sh
+Full AI automation stack:
 
-# 4. Install Docker
-sudo bash scripts/03-install-docker.sh
-
-# 5. Generate secrets and start the compose stack
-sudo bash scripts/12-generate-secrets.sh
+```bash
+sudo bash scripts/00-preflight-check.sh --profile ai-stack
+bash scripts/01-setup-ssh-keys.sh
+sudo bash scripts/02-security-baseline.sh --profile ai-stack
+sudo bash scripts/03-install-docker.sh --profile ai-stack
+sudo bash scripts/12-generate-secrets.sh --profile ai-stack
 cd docker-compose
 docker compose --env-file .env up -d
-
-# 6. Verify readiness
-sudo bash ../scripts/99-ready-checks.sh
+sudo bash ../scripts/99-ready-checks.sh --profile ai-stack
 ```
 
 For the full installation path, use [QUICKSTART.md](QUICKSTART.md). To understand what each script does before running it, see [Scripts Catalog](docs/scripts-catalog.md). For GitHub, VPS/root, deploy and backup key scenarios, see [SSH Keys](docs/ssh-keys.md).

@@ -7,18 +7,18 @@
 ## 1. Обязательные проверки (gate)
 Перед любыми изменениями:
 ```bash
-sudo bash scripts/00-preflight-check.sh
+sudo bash scripts/00-preflight-check.sh --profile ai-stack
 ```
 
 После каждого этапа:
 ```bash
-sudo bash scripts/99-ready-checks.sh
+sudo bash scripts/99-ready-checks.sh --profile ai-stack
 ```
 
 ## 2. Стоп‑условия
 Нельзя продолжать, если:
 - `docker compose config` возвращает ошибку
-- `scripts/99-ready-checks.sh` завершился с ошибкой
+- `scripts/99-ready-checks.sh --profile <profile>` завершился с ошибкой
 - сервисы `supabase_db`, `pgbouncer`, `redis`, `n8n` не запущены
 
 ## 3. Минимальный протокол

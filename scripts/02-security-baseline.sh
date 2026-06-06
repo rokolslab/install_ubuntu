@@ -5,7 +5,6 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SECURITY_DIR="$SCRIPT_DIR/security"
 
 # shellcheck source=lib/common.sh

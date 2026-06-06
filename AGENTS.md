@@ -4,7 +4,7 @@
 
 ## Обзор проекта
 
-`install_ubuntu` подготавливает Ubuntu/VPS сервер для self-hosted AI automation: Docker, n8n, Supabase/PostgreSQL, Redis, pgvector, monitoring, backups и readiness checks.
+`install_ubuntu` подготавливает Ubuntu/VPS серверы по профилям: `minimal`, `proxy`, `docker-host`, `web` и `ai-stack`. Проект покрывает базовый security hardening маленьких VPS и полный self-hosted AI automation stack: Docker, n8n, Supabase/PostgreSQL, Redis, pgvector, monitoring, backups и readiness checks.
 
 ## Технологический стек
 
@@ -19,6 +19,8 @@
 ```text
 .
 ├── scripts/              # Bash-скрипты установки, security hardening, backup и проверок
+│   ├── lib/              # Короткие shared helpers для scripts
+│   └── security/         # Малые functional security modules
 ├── docker-compose/       # Compose stack, env template, Supabase и monitoring config
 ├── docs/                 # Подробная документация по компонентам и эксплуатации
 ├── requirements/         # Системные требования и совместимость
@@ -34,10 +36,13 @@
 | Файл | Назначение |
 |------|------------|
 | `README.md` | Обзор проекта, сценарии использования и карта документации. |
-| `QUICKSTART.md` | Основной путь установки от чистого сервера до запущенной инфраструктуры. |
-| `scripts/00-preflight-check.sh` | Проверка сервера перед изменениями. |
+| `QUICKSTART.md` | Короткие profile-aware пути установки от чистого сервера. |
+| `scripts/00-preflight-check.sh` | Profile-aware проверка сервера и классификация пригодности. |
+| `scripts/02-security-baseline.sh` | Основной orchestrator security baseline по профилю. |
+| `scripts/02-secure-server.sh` | Deprecated compatibility wrapper для старого имени. |
+| `scripts/security/*.sh` | Короткие functional modules: firewall, SSH hardening, fail2ban, swap, audit. |
 | `scripts/98-verify-scripts.sh` | Локальная проверка Bash-скриптов. |
-| `scripts/99-ready-checks.sh` | Readiness checks после запуска инфраструктуры. |
+| `scripts/99-ready-checks.sh` | Profile-aware readiness checks после выбранного install flow. |
 | `docker-compose/docker-compose.yml` | Основной Compose stack. |
 | `docker-compose/env.example` | Шаблон обязательных переменных окружения и secrets. |
 
@@ -47,6 +52,8 @@
 |----------|------|----------|
 | README | `README.md` | Главный обзор проекта. |
 | Quick Start | `QUICKSTART.md` | Краткая инструкция установки. |
+| VPS Profiles | `docs/profiles.md` | Профили minimal/proxy/docker-host/web/ai-stack. |
+| Scripts Catalog | `docs/scripts-catalog.md` | Назначение каждого script и profile flows. |
 | SSH Keys | `docs/ssh-keys.md` | Сценарии SSH-ключей для GitHub, VPS/root, deploy и backup доступа. |
 | Architecture | `docs/architecture.md` | Runtime-компоненты и data flow. |
 | Operations | `docs/architecture-operations.md` | Масштабирование, backup и performance notes. |
@@ -62,6 +69,7 @@
 | `.ai-factory/DESCRIPTION.md` | Сводное описание проекта и обнаруженного стека. |
 | `.ai-factory/rules/base.md` | Базовые правила и конвенции проекта. |
 | `.ai-factory/ARCHITECTURE.md` | Архитектурные рекомендации AI Factory. |
+| `.ai-factory/PLAN.md` | Текущий рабочий план AI Factory, если используется. |
 
 ## Правила для агентов
 
@@ -70,3 +78,5 @@
 - Правильно: сначала `git checkout main`, затем `git pull origin main`.
 - Не запускайте scripts с `sudo` без понимания их назначения и соответствующей документации.
 - Не выводите secrets из `docker-compose/.env` в ответы, логи или отчёты.
+- Новые shell scripts должны быть короткими functional scripts: один script — одна понятная функция; orchestration допускается только в top-level wrapper.
+- Для `proxy`/x-ui не открывайте service ports автоматически; используйте явный `--allow-port <port>` или документированное ручное правило.

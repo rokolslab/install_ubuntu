@@ -25,12 +25,6 @@ log_error() {
 
 trap 'log_error "Ошибка на строке $LINENO: $BASH_COMMAND"' ERR
 
-# Проверка прав root
-if [ "$EUID" -ne 0 ]; then
-  log_error "Пожалуйста, запустите скрипт с правами root или через sudo"
-  exit 1
-fi
-
 # Определяем путь к директории проекта
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -38,6 +32,43 @@ COMPOSE_DIR="$PROJECT_ROOT/docker-compose"
 ENV_EXAMPLE="$COMPOSE_DIR/env.example"
 ENV_FILE="$COMPOSE_DIR/.env"
 SUPABASE_CONFIG="$COMPOSE_DIR/supabase/config.toml"
+
+# shellcheck source=lib/common.sh
+. "$SCRIPT_DIR/lib/common.sh"
+
+print_usage() {
+  cat <<'USAGE'
+Использование:
+  sudo bash scripts/12-generate-secrets.sh [--profile ai-stack]
+
+Этот script генерирует secrets только для docker-compose ai-stack.
+USAGE
+}
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+  print_usage
+  exit 0
+fi
+
+parse_profile "$@"
+case "${PROFILE:-}" in
+  ai-stack)
+    log_info "Secrets generation для профиля ai-stack"
+    ;;
+  "")
+    log_warn "Профиль не указан; этот script нужен только для ai-stack"
+    ;;
+  *)
+    log_error "Профиль '$PROFILE' не использует docker-compose secrets; не запускайте этот script для minimal/proxy/docker-host/web"
+    exit 1
+    ;;
+esac
+
+# Проверка прав root
+if [ "$EUID" -ne 0 ]; then
+  log_error "Пожалуйста, запустите скрипт с правами root или через sudo"
+  exit 1
+fi
 
 generate_password() {
   if command -v openssl &> /dev/null; then

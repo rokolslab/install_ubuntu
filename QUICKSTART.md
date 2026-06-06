@@ -1,18 +1,18 @@
 # Быстрый старт
 
-Короткий путь от чистого Ubuntu/VPS сервера до Docker-based инфраструктуры для AI automation: n8n, Supabase/PostgreSQL, Redis, pgvector, monitoring и backup-ready checks.
+Короткие пути от чистого Ubuntu/VPS сервера до нужного профиля: `minimal`, `proxy`, `docker-host`, `web` или `ai-stack`. Сначала выберите назначение сервера, затем запускайте только соответствующие scripts.
 
 ## Перед началом
 
-| Требование | Минимум |
-|------------|---------|
-| OS | Ubuntu 22.04 LTS или 24.04 LTS |
-| RAM | 4 GB, рекомендуется 8 GB+ |
-| Disk | 50 GB+ |
-| Access | root или sudo |
-| Network | SSH-доступ и открытые 80/443 при использовании Nginx |
+| Профиль | Минимум | Для чего |
+|---------|---------|----------|
+| `minimal` | 512MB RAM, 5GB disk | базовая безопасность маленького VPS |
+| `proxy` | 512MB-1GB RAM, 10GB disk | база под x-ui/3x-ui/VPN/proxy panel |
+| `docker-host` | 1GB RAM, 10GB disk | маленький Docker host |
+| `web` | 1GB RAM, 15GB disk | web/app VPS с HTTP/HTTPS |
+| `ai-stack` | 4GB RAM, 50GB disk | n8n, Supabase/PostgreSQL, Redis, pgvector, monitoring |
 
-Для bare metal с новым железом сначала проверьте [драйверы и совместимость](docs/08-hardware-drivers.md).
+Общее: Ubuntu 22.04 LTS или 24.04 LTS, root/sudo доступ, рабочий SSH. Для bare metal с новым железом сначала проверьте [драйверы и совместимость](docs/08-hardware-drivers.md).
 
 ## 1. Получите проект
 
@@ -23,15 +23,7 @@ cd install_ubuntu
 
 Если проект копируется без git, важно сохранить структуру каталогов `scripts/`, `docker-compose/`, `docs/`, `templates/` и `requirements/`.
 
-## 2. Проверьте сервер
-
-```bash
-sudo bash scripts/00-preflight-check.sh
-```
-
-Проверьте CPU/RAM/disk, версию Ubuntu, сетевые интерфейсы и базовый hardware profile до изменений.
-
-## 3. Подготовьте SSH-ключи
+## 2. Подготовьте SSH-ключи
 
 На клиентской машине, не на сервере:
 
@@ -39,50 +31,99 @@ sudo bash scripts/00-preflight-check.sh
 bash scripts/01-setup-ssh-keys.sh
 ```
 
-Скрипт поддерживает отдельные сценарии для GitHub, VPS/root, deploy-пользователя, резервного доступа и существующего ключа. Перед hardening убедитесь, что доступ по ключу работает. Это снижает риск заблокировать SSH-доступ.
+Перед hardening убедитесь, что доступ по ключу работает. Это снижает риск заблокировать SSH-доступ. Подробности: [SSH Keys](docs/ssh-keys.md).
 
-Минимальная проверка прав на клиентской машине:
+## 3. Minimal VPS Hardening
 
-```bash
-chmod 700 ~/.ssh
-chmod 600 ~/.ssh/config
-```
-
-Подробности: [SSH Keys](docs/ssh-keys.md).
-
-## 4. Harden Ubuntu server
+Используйте для маленького VPS, где нужны SSH hardening, UFW, fail2ban, updates и audit без Docker/AI stack.
 
 ```bash
-sudo bash scripts/02-secure-server.sh
+sudo bash scripts/00-preflight-check.sh --profile minimal
+sudo bash scripts/02-security-baseline.sh --profile minimal
+sudo bash scripts/99-ready-checks.sh --profile minimal
 ```
 
-Скрипт настраивает UFW, SSH hardening, fail2ban и security updates. Подробности: [Server Security](docs/01-server-security.md).
+Ожидаемые предупреждения preflight: Docker, compose и `.env` могут отсутствовать. Это нормально для `minimal`.
 
-## 5. Установите Docker
+Если RAM мала и swap отсутствует:
 
 ```bash
-sudo bash scripts/03-install-docker.sh
-newgrp docker
+sudo bash scripts/security/swap.sh --size 1G
 ```
 
-Проверьте установку:
+## 4. Proxy/x-ui VPS
+
+Используйте для подготовки безопасной базы под proxy/VPN panel. Репозиторий не устанавливает x-ui/3x-ui автоматически.
+
+```bash
+sudo bash scripts/00-preflight-check.sh --profile proxy
+sudo bash scripts/02-security-baseline.sh --profile proxy
+sudo bash scripts/99-ready-checks.sh --profile proxy
+```
+
+Service ports не открываются автоматически. Когда порт известен, разрешите только его:
+
+```bash
+sudo bash scripts/security/firewall.sh --profile proxy --allow-port <service-port>
+```
+
+Также можно передать порт сразу в baseline:
+
+```bash
+sudo bash scripts/02-security-baseline.sh --profile proxy --allow-port <service-port>
+```
+
+## 5. Docker Host
+
+Используйте для небольшого сервера под контейнеры без полного AI stack.
+
+```bash
+sudo bash scripts/00-preflight-check.sh --profile docker-host
+sudo bash scripts/02-security-baseline.sh --profile docker-host
+sudo bash scripts/03-install-docker.sh --profile docker-host
+sudo bash scripts/99-ready-checks.sh --profile docker-host
+```
+
+Проверьте установку Docker:
 
 ```bash
 docker --version
 docker compose version
 ```
 
-Подробности: [Docker Installation](docs/02-docker-installation.md).
+Если preflight показывает `WARN`, обычно включите swap или увеличьте RAM перед постоянными Docker workloads.
 
-## 6. Создайте секреты
+## 6. Web/App VPS
+
+Используйте для маленького web/app сервера с публичным HTTP/HTTPS entry point.
 
 ```bash
-sudo bash scripts/12-generate-secrets.sh
+sudo bash scripts/00-preflight-check.sh --profile web
+sudo bash scripts/02-security-baseline.sh --profile web
+sudo bash scripts/08-setup-nginx.sh --profile web
+sudo bash scripts/99-ready-checks.sh --profile web
 ```
 
-Скрипт создаёт `docker-compose/.env` из `env.example` и заполняет обязательные секреты. Проверьте файл перед запуском production-сервисов.
+`80/443` относятся к web/reverse proxy сценарию. Не открывайте внутренние DB/cache/service ports публично без явной необходимости.
 
-Критичные переменные:
+## 7. AI Automation Stack
+
+Используйте для полного Docker Compose stack: n8n, Supabase/PostgreSQL, Redis, pgvector, PgBouncer, monitoring и backups.
+
+```bash
+sudo bash scripts/00-preflight-check.sh --profile ai-stack
+sudo bash scripts/02-security-baseline.sh --profile ai-stack
+sudo bash scripts/03-install-docker.sh --profile ai-stack
+sudo bash scripts/12-generate-secrets.sh --profile ai-stack
+cd docker-compose
+docker compose --env-file .env up -d
+docker compose ps
+sudo bash ../scripts/99-ready-checks.sh --profile ai-stack
+```
+
+По умолчанию PostgreSQL, Redis, Supabase Studio и n8n привязаны к `127.0.0.1`. Для внешнего доступа используйте SSH tunnel или [Nginx](docs/07-nginx.md).
+
+Критичные переменные в `docker-compose/.env`:
 
 | Переменная | Назначение |
 |------------|------------|
@@ -95,61 +136,7 @@ sudo bash scripts/12-generate-secrets.sh
 
 Подробности: [Secrets](docs/13-secrets.md).
 
-## 7. Запустите инфраструктуру
-
-Рекомендуемый путь через единый compose stack:
-
-```bash
-cd docker-compose
-docker compose --env-file .env up -d
-docker compose ps
-```
-
-По умолчанию PostgreSQL, Redis, Supabase Studio и n8n привязаны к `127.0.0.1`. Для внешнего доступа используйте SSH tunnel или [Nginx](docs/07-nginx.md).
-
-## 8. Проверьте готовность
-
-Из корня проекта:
-
-```bash
-sudo bash scripts/99-ready-checks.sh
-```
-
-Быстрые smoke checks:
-
-```bash
-cd docker-compose
-docker compose ps
-curl -f http://localhost:5678/healthz
-docker compose exec redis redis-cli -a "$REDIS_PASSWORD" ping
-```
-
-Подробности: [Quality Checks](docs/12-quality-checks.md) и [Ready Rules](docs/14-ready-rules.md).
-
-## 9. Откройте интерфейсы локально
-
-| Сервис | URL |
-|--------|-----|
-| n8n | `http://localhost:5678` |
-| Supabase Studio | `http://localhost:54323` |
-| Prometheus | `http://localhost:9090` |
-| Grafana | `http://localhost:3000` |
-
-Если сервер удалённый, используйте SSH tunnel или reverse proxy. Не открывайте внутренние порты публично без явной необходимости.
-
-## 10. Следующие шаги
-
-| Задача | Команда или ссылка |
-|--------|--------------------|
-| pgvector/RAG setup | [pgvector](docs/06-vector-db.md) |
-| n8n credentials | [n8n](docs/04-n8n.md) |
-| Monitoring | [Monitoring](docs/09-monitoring.md) |
-| PostgreSQL backup | `sudo bash scripts/10-backup-postgres.sh` |
-| Backup schedule | `sudo bash scripts/11-setup-backup-cron.sh` |
-| Public HTTPS access | [Nginx](docs/07-nginx.md) |
-| Troubleshooting | [Troubleshooting](docs/11-troubleshooting.md) |
-
-## Полезные команды
+## Полезные команды для AI stack
 
 ```bash
 cd docker-compose
@@ -170,9 +157,17 @@ docker compose down
 docker compose down -v
 ```
 
-## Документация
+## Следующие шаги
 
-- [README](README.md) — landing page проекта.
-- [Infrastructure Setup](docs/03-infrastructure-setup.md) — общий порядок установки.
-- [Scripts Order](docs/15-scripts-order.md) — каноническая последовательность скриптов.
-- [Architecture](docs/architecture.md) — компоненты и data flow.
+| Задача | Команда или ссылка |
+|--------|--------------------|
+| Понять назначение scripts | [Scripts Catalog](docs/scripts-catalog.md) |
+| Сверить порядок запуска | [Scripts Order](docs/15-scripts-order.md) |
+| Требования по профилям | [System Requirements](requirements/system-requirements.md) |
+| pgvector/RAG setup | [pgvector](docs/06-vector-db.md) |
+| n8n credentials | [n8n](docs/04-n8n.md) |
+| Monitoring | [Monitoring](docs/09-monitoring.md) |
+| PostgreSQL backup | `sudo bash scripts/10-backup-postgres.sh` |
+| Backup schedule | `sudo bash scripts/11-setup-backup-cron.sh` |
+| Public HTTPS access | [Nginx](docs/07-nginx.md) |
+| Troubleshooting | [Troubleshooting](docs/11-troubleshooting.md) |

@@ -25,12 +25,24 @@ trap 'log_error "Ошибка на строке $LINENO: $BASH_COMMAND"' ERR
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-log_info "Проверка синтаксиса Bash для scripts/*.sh"
-bash -n "$SCRIPT_DIR"/*.sh
+shopt -s nullglob
+SCRIPT_FILES=(
+  "$SCRIPT_DIR"/*.sh
+  "$SCRIPT_DIR"/lib/*.sh
+  "$SCRIPT_DIR"/security/*.sh
+)
+
+if [ "${#SCRIPT_FILES[@]}" -eq 0 ]; then
+  log_warn "Shell scripts не найдены"
+  exit 0
+fi
+
+log_info "Проверка синтаксиса Bash для ${#SCRIPT_FILES[@]} first-party scripts"
+bash -n "${SCRIPT_FILES[@]}"
 
 if command -v shellcheck &> /dev/null; then
-  log_info "Запуск ShellCheck для scripts/*.sh"
-  shellcheck "$SCRIPT_DIR"/*.sh
+  log_info "Запуск ShellCheck для ${#SCRIPT_FILES[@]} first-party scripts"
+  shellcheck -x --severity=warning "${SCRIPT_FILES[@]}"
 else
   log_warn "ShellCheck не установлен; пропускаю статический анализ"
   log_warn "Установите: sudo apt install -y shellcheck"

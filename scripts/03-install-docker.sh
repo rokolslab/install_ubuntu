@@ -26,6 +26,38 @@ log_error() {
 
 trap 'log_error "Ошибка на строке $LINENO: $BASH_COMMAND"' ERR
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=lib/common.sh
+. "$SCRIPT_DIR/lib/common.sh"
+
+print_usage() {
+    cat <<'USAGE'
+Использование:
+  sudo bash scripts/03-install-docker.sh --profile docker-host|ai-stack
+
+Docker не нужен для minimal/proxy по умолчанию.
+USAGE
+}
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+    print_usage
+    exit 0
+fi
+
+parse_profile "$@"
+case "${PROFILE:-}" in
+    docker-host|ai-stack)
+        log_info "Docker install разрешён для профиля: $PROFILE"
+        ;;
+    "")
+        log_warn "Профиль не указан; Docker install относится к docker-host или ai-stack"
+        ;;
+    *)
+        log_warn "Профиль '$PROFILE' обычно не требует Docker; продолжайте только если Docker действительно нужен"
+        ;;
+esac
+
 # Проверка прав root
 if [ "$EUID" -ne 0 ]; then 
     log_error "Пожалуйста, запустите скрипт с правами root или через sudo"

@@ -1,430 +1,314 @@
-# План улучшения SSH-ключей
+# Implementation Plan: Унификация проекта под разные типы VPS
 
-Дата создания: 2026-05-16
+Branch: main
+Created: 2026-06-06
+Refined: 2026-06-06
 
 ## Settings
 
-- **Testing:** yes — проверить Bash syntax и, при наличии, ShellCheck.
-- **Logging:** standard — сохранить текущие `log_info`, `log_warn`, `log_error`, добавить предупреждения для security-sensitive сценариев.
-- **Docs:** yes — обновить README/Quickstart/security docs и добавить подробный SSH-документ.
-- **Roadmap Linkage:** none — linkage не выбирался пользователем.
+- Testing: yes — проверять Bash syntax, ShellCheck при наличии, `docker compose config` только для `ai-stack`.
+- Logging: standard — короткие `[INFO]`, `[WARN]`, `[ERROR]`; без debug-простыней и без вывода secrets.
+- Docs: yes — обновить quick paths, profiles, requirements и каталог scripts.
+- Roadmap Linkage: none — linkage не выбирался пользователем.
 
-## Краткая оценка текущего состояния
+## Plan Refinement Report
 
-Текущий `scripts/01-setup-ssh-keys.sh` уже полезен как базовый интерактивный сценарий для клиентской машины:
+План доработан после проверки текущей структуры `scripts/` и документации.
 
-- Скрипт явно предназначен для запуска на клиенте: `scripts/01-setup-ssh-keys.sh:3-4`.
-- Используется `ed25519`, что правильно для современного дефолта: `scripts/01-setup-ssh-keys.sh:145`.
-- Есть проверка существующего ключа, копирование через `ssh-copy-id`, fallback через ручное добавление в `authorized_keys`, тест SSH-подключения и запись в `~/.ssh/config`.
-- В `README.md` и `QUICKSTART.md` уже указано, что SSH-ключи готовятся до hardening.
-- В `docs/01-server-security-hardening.md` есть короткий ручной блок по SSH-ключам.
+Найденные проблемы:
 
-Ограничение текущего состояния: раздел решает в основном один сценарий — ключ для подключения к серверу. Для GitHub, deploy-доступа, резервного доступа, нескольких рабочих машин и нескольких GitHub-аккаунтов логика и документация недостаточно зрелые.
+- В исходном плане были конфликтующие имена `03-firewall-config.sh`, `04-ssh-hardening.sh`, `07-setup-swap.sh`, потому что эти номера уже заняты текущими top-level scripts.
+- Не хватало явной карты “какой script что делает”, а пользователь должен понимать назначение каждого script до запуска.
+- Не была описана backward compatibility стратегия для текущего `scripts/02-secure-server.sh`.
+- `scripts/98-verify-scripts.sh` сейчас проверяет только `scripts/*.sh`; при добавлении подкаталогов его нужно обновить.
+- Не хватало acceptance criteria для UX: preflight должен давать понятный вывод “подходит для ... / не подходит для ...”.
 
-## Проблемы и риски
+Принятые улучшения:
 
-- `ssh-keygen` вызывается с `-N ""`, то есть пустая passphrase используется всегда и без явного выбора пользователя: `scripts/01-setup-ssh-keys.sh:145`.
-- Комментарий ключа сейчас либо email, либо `whoami@hostname`, без purpose, account/server, device и даты: `scripts/01-setup-ssh-keys.sh:136-142`.
-- Имя ключа строится как `${server_name}_${client_name}`, без purpose и account/user: `scripts/01-setup-ssh-keys.sh:100-108`.
-- Нет отдельного сценария для GitHub: генерация, вывод `.pub`, добавление в GitHub, `ssh -T git@github.com`, `~/.ssh/config`, несколько аккаунтов.
-- Нет явного выбора purpose: GitHub, VPS/root, deploy, backup/rescue, existing key.
-- Скрипт выводит содержимое публичного ключа, но недостаточно явно предупреждает, что приватный ключ нельзя копировать в GitHub, чаты, тикеты или репозитории.
-- `~/.ssh/config` alias сейчас формируется как `${SERVER_NAME}_${CLIENT_NAME}`, что может быть неудобно и конфликтовать с несколькими аккаунтами/серверами: `scripts/01-setup-ssh-keys.sh:338`.
-- Документация в `QUICKSTART.md:34-42` слишком короткая: не объясняет сценарии, passphrase, права, GitHub, где выполняются команды.
-- `docs/01-server-security-hardening.md:20-42` даёт базовые команды, но не объясняет naming standard, комментарии, `IdentitiesOnly yes`, GitHub aliases и отзыв скомпрометированных ключей.
+- Новые мелкие security-модули размещаются в `scripts/security/`, чтобы не ломать историческую нумерацию.
+- Top-level scripts остаются понятными entry points.
+- Добавлен Script Responsibility Matrix.
+- Добавлены задачи для migration wrappers, UX вывода preflight и recursive verification.
 
-## Целевой стандарт
+## Goal
 
-Стандарт имени приватного ключа:
+Сделать проект универсальным bootstrap/security набором для разных VPS, включая маленькие серверы `1 vCPU / 512MB-1GB RAM`, не ломая текущий AI automation stack.
 
-```text
-~/.ssh/<purpose>_<account-or-server>_<device>
-```
+Главный принцип: **короткие функциональные scripts + профили назначения сервера**.
 
-Примеры:
+Preflight должен не отбраковывать слабый сервер по требованиям AI stack, а классифицировать его:
 
 ```text
-~/.ssh/github_rokolslab_ubuntu_pc
-~/.ssh/github_rokols2017_thinkpad
-~/.ssh/vps-fi-01_root_ubuntu_pc
-~/.ssh/prod-n8n_deploy_mini_pc
-~/.ssh/backup-vps_root_thinkpad
+Сервер подходит для: minimal, proxy
+С ограничениями: docker-host
+Не подходит для: ai-stack
 ```
 
-Стандарт комментария ключа:
+## Constraints
 
-```text
-email | purpose | account/server | device | date
+- Не превращать scripts в многостраничные простыни.
+- Один функциональный script должен делать одну понятную функцию.
+- Top-level wrapper может вызывать несколько коротких scripts, но сам не должен содержать всю реализацию.
+- Общая логика допускается только в маленьких helpers, без сложного Bash framework.
+- Безопасность должна быть общей базой, но опасные решения требуют явного условия или предупреждения.
+- Текущий AI stack должен остаться доступен как отдельный профиль, а не как дефолт для всех серверов.
+- Не переиспользовать уже занятые номера top-level scripts для новых задач.
+
+## Target Profiles
+
+| Profile | Назначение | Минимум | Что включает |
+|---|---|---:|---|
+| `minimal` | Базовая безопасность маленького VPS | 512MB RAM, 5GB disk | SSH, UFW, fail2ban, updates, audit |
+| `proxy` | x-ui/3x-ui/VPN/proxy panel | 512MB-1GB RAM, 10GB disk | `minimal` + explicit service ports + optional swap |
+| `docker-host` | Маленький Docker host | 1GB RAM, 10GB disk | `minimal` + Docker install/hardening |
+| `web` | Небольшой web/app VPS | 1-2GB RAM, 15GB disk | `minimal` + 80/443 + optional Nginx/Caddy |
+| `ai-stack` | Текущий n8n/Supabase/Redis stack | 4GB RAM, 50GB disk | Docker Compose stack, secrets, ready checks |
+
+## Script Responsibility Matrix
+
+Top-level entry points:
+
+| Script | Назначение | Профили | Пользовательский смысл |
+|---|---|---|---|
+| `scripts/00-preflight-check.sh` | Анализ ресурсов, OS, ports, Docker readiness и классификация профилей | all | “Для чего подходит этот сервер?” |
+| `scripts/01-setup-ssh-keys.sh` | Подготовка SSH keys на клиентской машине | all | “Как безопасно зайти на сервер?” |
+| `scripts/02-security-baseline.sh` | Короткий orchestrator базовой безопасности | `minimal`, `proxy`, `docker-host`, `web`, `ai-stack` | “Привести безопасность сервера в порядок” |
+| `scripts/02-secure-server.sh` | Compatibility wrapper для старого имени | all | “Старый путь, который объясняет новый” |
+| `scripts/03-install-docker.sh` | Установка Docker/Compose | `docker-host`, `ai-stack` | “Подготовить сервер под контейнеры” |
+| `scripts/04-setup-supabase.sh` | Supabase/PostgreSQL setup | `ai-stack` | “Компонент AI stack” |
+| `scripts/05-setup-n8n.sh` | n8n setup | `ai-stack` | “Компонент AI automation” |
+| `scripts/06-setup-redis.sh` | Redis setup | `ai-stack` | “Очередь/cache для AI stack” |
+| `scripts/07-setup-vector-db.sh` | pgvector setup | `ai-stack` | “Vector DB для RAG” |
+| `scripts/08-setup-nginx.sh` | Nginx setup | `web`, `ai-stack`, optional `proxy` | “Reverse proxy/HTTPS path” |
+| `scripts/09-install-nvidia-drivers.sh` | NVIDIA drivers | optional | “GPU support, не для маленького VPS по умолчанию” |
+| `scripts/10-backup-postgres.sh` | PostgreSQL backup | `ai-stack` | “Бэкап DB” |
+| `scripts/11-setup-backup-cron.sh` | Backup cron | `ai-stack` | “Автоматизация DB backups” |
+| `scripts/12-generate-secrets.sh` | `.env` secrets для compose stack | `ai-stack` | “Secrets для AI stack, не для minimal” |
+| `scripts/98-verify-scripts.sh` | Локальная проверка first-party scripts | dev | “Проверить Bash scripts без sudo” |
+| `scripts/99-ready-checks.sh` | Profile-aware readiness checks | all | “Проверить результат выбранного профиля” |
+
+Short security modules under `scripts/security/`:
+
+| Script | Делает | Не делает |
+|---|---|---|
+| `scripts/security/system-updates.sh` | `apt update`, safe upgrade policy, autoremove при необходимости | Не ставит Docker и не меняет SSH |
+| `scripts/security/firewall.sh` | UFW default deny, SSH allow, profile/explicit ports | Не открывает `80/443` всем подряд |
+| `scripts/security/ssh-hardening.sh` | backup sshd config, safe options, `sshd -t`, rollback | Не отключает доступ без проверки/подтверждения |
+| `scripts/security/fail2ban.sh` | Установка и минимальная sshd jail config | Не перетирает сложную custom config без backup |
+| `scripts/security/unattended-upgrades.sh` | Security auto-updates | Не делает full dist policy для всех случаев |
+| `scripts/security/sysctl-hardening.sh` | Базовые network sysctl hardening settings | Не включает routing/VPN tuning |
+| `scripts/security/swap.sh` | Idempotent swapfile для малых VPS | Не пересоздаёт существующий swap без явного флага |
+| `scripts/security/audit.sh` | Краткий отчёт: ports, services, UFW, fail2ban, SSH | Не меняет систему |
+
+## Profile Flows
+
+Minimal VPS:
+
+```bash
+sudo bash scripts/00-preflight-check.sh --profile minimal
+bash scripts/01-setup-ssh-keys.sh
+sudo bash scripts/02-security-baseline.sh --profile minimal
+sudo bash scripts/99-ready-checks.sh --profile minimal
 ```
 
-Пример:
+Proxy/x-ui VPS:
 
-```text
-rokols2017@gmail.com | github | rokolslab | ubuntu-pc | 2026-05-16
+```bash
+sudo bash scripts/00-preflight-check.sh --profile proxy
+bash scripts/01-setup-ssh-keys.sh
+sudo bash scripts/02-security-baseline.sh --profile proxy --allow-port <ssh-or-service-port>
+sudo bash scripts/99-ready-checks.sh --profile proxy
 ```
 
-Целевые сценарии:
+Docker host:
 
-- `github` — ключ для GitHub account/org, обычно с passphrase.
-- `vps-root` — ключ для первичного root/admin доступа к VPS, passphrase рекомендуется.
-- `deploy` — ключ для deploy-пользователя или автоматизации, passphrase зависит от сценария; пустая passphrase только после явного подтверждения риска.
-- `backup` или `rescue` — резервный доступ, passphrase рекомендуется, хранить отдельно и документировать отзыв.
-- `existing` — использовать уже существующий ключ без генерации.
+```bash
+sudo bash scripts/00-preflight-check.sh --profile docker-host
+bash scripts/01-setup-ssh-keys.sh
+sudo bash scripts/02-security-baseline.sh --profile docker-host
+sudo bash scripts/03-install-docker.sh --profile docker-host
+sudo bash scripts/99-ready-checks.sh --profile docker-host
+```
 
-Passphrase policy:
+Web/app VPS:
 
-- Для GitHub и admin/root ключей рекомендовать passphrase.
-- Для deploy/automation ключей разрешать пустую passphrase только после явного выбора.
-- Не использовать `-N ""` автоматически.
-- Если пользователь выбирает пустую passphrase, скрипт должен вывести предупреждение о рисках.
+```bash
+sudo bash scripts/00-preflight-check.sh --profile web
+bash scripts/01-setup-ssh-keys.sh
+sudo bash scripts/02-security-baseline.sh --profile web
+sudo bash scripts/08-setup-nginx.sh --profile web
+sudo bash scripts/99-ready-checks.sh --profile web
+```
 
-## План изменений по файлам
+AI stack:
 
-## Refinement Report
+```bash
+sudo bash scripts/00-preflight-check.sh --profile ai-stack
+bash scripts/01-setup-ssh-keys.sh
+sudo bash scripts/02-security-baseline.sh --profile ai-stack
+sudo bash scripts/03-install-docker.sh --profile ai-stack
+sudo bash scripts/12-generate-secrets.sh
+sudo bash scripts/99-ready-checks.sh --profile ai-stack
+```
 
-После повторного анализа текущего скрипта и документации план усилен следующими изменениями:
+## Design Decisions
 
-- Добавлена исполнимая task breakdown структура вместо общего списка намерений.
-- Уточнены Bash edge cases: безопасное обновление `~/.ssh/config`, отсутствие `sed -i` portability guarantees на macOS, quoting публичного ключа, недопущение дублей в `authorized_keys`.
-- Добавлены проверки интерактивных сценариев без выполнения опасных server-mutating команд.
-- Добавлена синхронизация `docs/15-scripts-order.md`, потому что он явно описывает `scripts/01-setup-ssh-keys.sh` как клиентский этап установки.
-- Уточнено, что реализация не должна пытаться автоматически открыть GitHub UI, использовать GitHub tokens или читать реальные приватные ключи.
+- `00-preflight-check.sh` становится profile-aware и выдаёт рекомендации вместо жёсткого отказа при 1GB RAM.
+- Текущий `02-secure-server.sh` не расширяется дальше; он становится compatibility wrapper или deprecated entry point.
+- Новая реализация безопасности живёт в коротких modules `scripts/security/*.sh`.
+- `02-security-baseline.sh` является orchestrator: вызывает нужные `scripts/security/*.sh` по профилю.
+- `80/443` не открываются по умолчанию для всех; они зависят от профиля или явного `--allow-port`.
+- `PermitRootLogin no` и `PasswordAuthentication no` применяются только если есть безопасный путь не потерять доступ.
+- Swap нужен как отдельный короткий script для маленьких VPS.
+- Docker и AI stack не являются частью minimal security baseline.
 
 ## Tasks
 
-### Phase 1 — Script Design And Compatibility
+### Phase 1: Profiles, UX And Preflight
 
-- [x] **Task 1: Зафиксировать сценарии и совместимость текущего server flow**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`.
-  - Deliverable: в начале `main` добавить выбор сценария: GitHub, VPS/root, deploy, backup/rescue, existing key.
-  - Сохранить текущий интерактивный сценарий подключения к серверу как default-compatible path для пользователей, которые запускают скрипт по `QUICKSTART.md`.
-  - Logging: `log_step` для выбранного сценария, `log_info` для client host/user, `log_warn` если пользователь выбирает сценарий с повышенным риском.
-  - Dependencies: нет.
+- [x] **Task 1: Добавить маленький общий helper без Bash framework**
+  - Files: `scripts/lib/common.sh`.
+  - Deliverable: создать helper с `log_info`, `log_warn`, `log_error`, `require_root`, `detect_os`, `detect_resources`, `parse_profile`, `print_profile_summary`.
+  - Scope limit: файл должен оставаться коротким; не добавлять generic plugin system или сложный argument parser.
+  - Logging requirements: `log_info` для выбранного профиля и обнаруженных ресурсов; `log_warn` для unknown profile; не логировать secrets.
+  - Dependencies: none.
 
-- [x] **Task 2: Добавить безопасную нормализацию имени ключа**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`.
-  - Deliverable: заменить текущую пару `generate_key_name(server_name, client_name)` на standard-based генерацию `<purpose>_<account-or-server>_<device>`.
-  - Добавить helper `sanitize_component`, который приводит ввод к нижнему регистру, заменяет пробелы на `-` или `_`, удаляет `/`, `..`, quotes, shell metacharacters и пустые компоненты.
-  - Edge cases: IP-адреса, FQDN, `root@host`, пробелы в device name, повторяющиеся `_`/`-`.
-  - Logging: `log_info` с итоговым именем ключа, без вывода приватного содержимого.
+- [x] **Task 2: Переделать preflight в классификатор пригодности сервера**
+  - Files: `scripts/00-preflight-check.sh`.
+  - Deliverable: добавить `--profile minimal|proxy|docker-host|web|ai-stack`; без `--profile` выводить список подходящих/неподходящих профилей.
+  - Behavior: `1GB RAM` не fatal; fatal только для реально невозможных условий вроде неподдерживаемой OS, отсутствия root для system checks, критически малого диска.
+  - Output: краткая таблица `OK / WARN / NO` по профилям и рекомендации вроде “включить swap”, “не запускать ai-stack”.
+  - Logging requirements: `log_info` для ресурсов, `log_warn` для ограничений, `log_error` только для fatal blockers.
   - Dependencies: Task 1.
 
-- [x] **Task 3: Добавить structured key comment**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`.
-  - Deliverable: формировать комментарий `email | purpose | account/server | device | date`.
-  - Дата должна генерироваться через локальную дату в формате `YYYY-MM-DD`, без требования GNU-specific flags.
-  - Если email пустой, использовать нейтральное значение вроде `no-email` или явно запросить email с возможностью пропуска; не придумывать реальные данные.
-  - Logging: `log_info` с комментарием допустим, потому что это не secret, но не выводить приватный ключ.
+- [x] **Task 3: Добавить каталог scripts для пользователя**
+  - Files: `docs/scripts-catalog.md`, `docs/15-scripts-order.md`, `README.md`.
+  - Deliverable: документ с таблицей “script / что делает / для каких профилей / когда запускать / что не делает”.
+  - User requirement: после чтения пользователь должен понимать назначение каждого script без открытия кода.
+  - Logging requirements: не применимо к docs; examples не должны содержать secrets.
   - Dependencies: Task 2.
 
-### Phase 2 — Key Generation Security
+- [x] **Task 4: Обновить requirements под профили**
+  - Files: `requirements/system-requirements.md`, `docs/profiles.md`.
+  - Deliverable: заменить единые требования `4GB/50GB` на таблицу профилей; зафиксировать, что `4GB/50GB` относится к `ai-stack`.
+  - Logging requirements: не применимо к docs; документ должен описывать уровни `fatal/warn/info` из preflight.
+  - Dependencies: Task 2.
 
-- [x] **Task 4: Переработать passphrase flow**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`.
-  - Deliverable: убрать автоматическое `ssh-keygen ... -N ""` из default path.
-  - Для GitHub, VPS/root и backup/rescue рекомендовать passphrase и запускать `ssh-keygen` без `-N`, чтобы пользователь ввёл passphrase через стандартный OpenSSH prompt.
-  - Для deploy/automation разрешить пустую passphrase только после явного подтверждения и предупреждения о рисках.
-  - Edge cases: пользователь отменяет генерацию, ключ уже существует, пользователь выбирает existing key.
-  - Logging: `log_warn` для empty passphrase, `log_info` для выбранной политики без записи самой passphrase.
-  - Dependencies: Task 3.
+### Phase 2: Short Security Modules
 
-- [x] **Task 5: Централизовать права файлов SSH**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`.
-  - Deliverable: добавить `ensure_ssh_dir`/`fix_ssh_permissions` и использовать после генерации, выбора existing key и записи config.
-  - Требуемые права: `chmod 700 ~/.ssh`, `chmod 600 ~/.ssh/config`, `chmod 600 private_key`, `chmod 644 public_key`.
-  - Не менять права файлов, которых нет; existing private key проверять осторожно и предупреждать, если права слишком широкие.
-  - Logging: `log_info` при исправлении прав, `log_warn` если невозможно исправить права.
-  - Dependencies: Task 4.
+- [x] **Task 5: Создать security modules без конфликтов нумерации**
+  - Files: `scripts/security/system-updates.sh`, `scripts/security/firewall.sh`, `scripts/security/ssh-hardening.sh`, `scripts/security/fail2ban.sh`, `scripts/security/unattended-upgrades.sh`, `scripts/security/sysctl-hardening.sh`, `scripts/security/audit.sh`.
+  - Deliverable: вынести из текущего `scripts/02-secure-server.sh` функциональные блоки в короткие scripts под `scripts/security/`.
+  - Scope limit: каждый module делает одну функцию; не добавлять multi-page scripts.
+  - Logging requirements: каждый module логирует старт, ключевые изменения и итог; warnings для действий, которые могут повлиять на доступ по SSH.
+  - Dependencies: Task 1.
 
-### Phase 3 — Scenario Flows
-
-- [x] **Task 6: Реализовать GitHub flow**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`.
-  - Deliverable: отдельный сценарий без `ssh-copy-id`, который генерирует/использует GitHub key, выводит только `.pub`, показывает инструкцию добавить ключ в GitHub и предлагает проверку `ssh -T git@github.com` или alias.
-  - Добавить поддержку `Host github.com` для default account и `Host github-<account>` для нескольких аккаунтов.
-  - В `~/.ssh/config` обязательно писать `HostName github.com`, `User git`, `IdentityFile`, `IdentitiesOnly yes`.
-  - Edge cases: уже существующий `Host github.com`, несколько GitHub аккаунтов, пользователь не хочет менять config.
-  - Logging: `log_warn`, что в GitHub добавляется только `.pub`; `log_info` с командой проверки.
+- [x] **Task 6: Добавить `scripts/02-security-baseline.sh` как понятный orchestrator**
+  - Files: `scripts/02-security-baseline.sh`.
+  - Deliverable: короткий top-level script, который по `--profile` вызывает нужные `scripts/security/*.sh`.
+  - Behavior: `minimal` не ставит Docker, Nginx, Supabase, Redis, n8n; `ai-stack` включает только security baseline, а не поднимает compose.
+  - Logging requirements: `log_info` перед вызовом каждого module; `log_warn` для пропущенных optional modules; `log_error` если обязательный module падает.
   - Dependencies: Task 5.
 
-- [x] **Task 7: Улучшить VPS/root, deploy и backup/rescue flows**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`.
-  - Deliverable: адаптировать текущий server flow под разные purpose: `vps-root`, `deploy`, `backup`/`rescue`.
-  - Для server flows оставить `ssh-copy-id`, ручной fallback и test connection.
-  - Для deploy flow явно спрашивать user на сервере и не считать `root` дефолтом.
-  - Для backup/rescue flow добавить предупреждение о хранении и отзыве ключа.
-  - Logging: `log_step` для копирования на сервер, `log_warn` для root/deploy/security decisions.
+- [x] **Task 7: Сделать firewall profile-aware и явным для proxy/x-ui**
+  - Files: `scripts/security/firewall.sh`, `templates/firewall-rules.example`, `docs/profiles.md`, `docs/scripts-catalog.md`.
+  - Deliverable: UFW default deny incoming; SSH порт всегда сохраняется; `80/443` открываются только для `web`/`ai-stack` или явного флага.
+  - Proxy profile: не открывать x-ui порты автоматически; требовать `--allow-port <port>` или печатать команды для ручного открытия.
+  - Logging requirements: `log_info` для открытых портов, `log_warn` если профиль требует ручного выбора портов, `log_error` если SSH port не определён.
+  - Dependencies: Task 5.
+
+- [x] **Task 8: Сделать SSH hardening безопасным от потери доступа**
+  - Files: `scripts/security/ssh-hardening.sh`, `docs/01-server-security.md`, `docs/ssh-keys.md`.
+  - Deliverable: backup `sshd_config`, `sshd -t`, restart rollback on failure; `PermitRootLogin no` и `PasswordAuthentication no` применять только после проверки/подтверждения key-based доступа.
+  - Scope limit: не добавлять интерактивный wizard на сотни строк; если не хватает данных, печатать понятный warning и пропускать опасный шаг.
+  - Logging requirements: `log_warn` перед отключением root/password login, `log_error` при невалидном sshd config, `log_info` при backup/rollback.
+  - Dependencies: Task 5.
+
+- [x] **Task 9: Добавить swap как отдельный optional module для маленьких VPS**
+  - Files: `scripts/security/swap.sh`, `docs/profiles.md`, `docs/scripts-catalog.md`.
+  - Deliverable: idempotent swapfile module для `minimal`, `proxy`, `docker-host` при малой RAM.
+  - Behavior: если swap уже есть, только показать статус; не пересоздавать без явного флага.
+  - Logging requirements: `log_info` для текущего swap status, `log_warn` если RAM мала и swap отсутствует, `log_error` если недостаточно диска.
+  - Dependencies: Task 2, Task 5.
+
+### Phase 3: Compatibility And Heavy Stack Separation
+
+- [x] **Task 10: Сохранить старый `02-secure-server.sh` как compatibility wrapper**
+  - Files: `scripts/02-secure-server.sh`, `docs/15-scripts-order.md`.
+  - Deliverable: старый script должен ясно сообщать, что новый entry point — `scripts/02-security-baseline.sh`, и вызывать его с безопасным default profile или просить указать профиль.
+  - Behavior: не оставлять старую многостраничную реализацию как основной путь.
+  - Logging requirements: `log_warn` о deprecated wrapper, `log_info` о вызове нового script, `log_error` если профиль не указан и default небезопасен.
   - Dependencies: Task 6.
 
-- [x] **Task 8: Сделать обновление `~/.ssh/config` безопаснее**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`.
-  - Deliverable: вынести запись config в helper, который создаёт backup перед изменением, проверяет существующий `Host` alias и не ломает соседние блоки.
-  - Не полагаться бездумно на `sed -i`, потому что поведение отличается на GNU/Linux и macOS; если используется `sed`, делать portable-safe fallback или переписывать через временный файл.
-  - Проверять `Host` match как отдельную строку, а не substring.
-  - Logging: `log_info` о backup/update, `log_warn` при конфликте alias.
-  - Dependencies: Task 6 и Task 7.
+- [x] **Task 11: Отделить heavy stack шаги от minimal/security flow**
+  - Files: `scripts/03-install-docker.sh`, `scripts/12-generate-secrets.sh`, `scripts/99-ready-checks.sh`, `docs/15-scripts-order.md`, `docs/scripts-catalog.md`.
+  - Deliverable: явно отметить Docker, secrets, compose up и ready checks как `ai-stack` или `docker-host` steps, а не обязательные шаги minimal VPS.
+  - Minimal change: не переписывать Docker installer полностью; добавить profile checks/warnings и документацию.
+  - Logging requirements: `log_warn` если пользователь запускает AI stack steps на сервере, который preflight классифицирует как неподходящий.
+  - Dependencies: Task 2, Task 4.
 
-- [x] **Task 9: Укрепить ручной fallback для `authorized_keys`**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`, `docs/ssh-keys.md`.
-  - Deliverable: заменить небезопасно выглядящий manual snippet с `echo` на `printf '%s\n' 'PUBLIC_KEY' >> ~/.ssh/authorized_keys` в документации и выводе скрипта.
-  - По возможности для remote command сначала проверять, что public key ещё не добавлен, чтобы не плодить дубли.
-  - Не выводить private key; выводить только public key.
-  - Logging: `log_warn` при fallback, `log_info` с ручными командами.
-  - Dependencies: Task 7.
+- [x] **Task 12: Сделать ready checks profile-aware**
+  - Files: `scripts/99-ready-checks.sh`.
+  - Deliverable: `--profile minimal|proxy|docker-host|web|ai-stack`; для `minimal` проверять SSH/UFW/fail2ban/updates/swap; для `ai-stack` оставить compose/service checks.
+  - Scope limit: не делать огромный универсальный healthcheck; маленькие функции и `case "$PROFILE"`.
+  - Logging requirements: `log_info` для пройденных проверок, `log_warn` для optional checks, `log_error` для обязательных failed checks профиля.
+  - Dependencies: Task 6, Task 11.
 
-### Phase 4 — Documentation
+### Phase 4: Documentation And Entry Points
 
-- [x] **Task 10: Создать `docs/ssh-keys.md` как основной SSH-key guide**
-  - Файлы: `docs/ssh-keys.md`.
-  - Deliverable: новый документ с разделами: где выполнять команды, naming standard, comment standard, passphrase policy, GitHub key, VPS/root key, deploy key, backup/rescue key, existing key, `~/.ssh/config`, permissions, troubleshooting, rotation/revoke, запрещённые действия.
-  - Включить конкретные команды из раздела “Команды для документации” ниже.
-  - Security notes: private key нельзя копировать в GitHub, чаты, тикеты, репозитории; в GitHub добавляется только `.pub`; не коммитить `~/.ssh`, private keys, `.env`; скомпрометированные ключи отзывать.
-  - Logging: не применимо к docs, но документация должна описывать ожидаемые предупреждения скрипта.
-  - Dependencies: Task 6, Task 7, Task 9.
+- [x] **Task 13: Разделить Quick Start на понятные пути установки**
+  - Files: `README.md`, `QUICKSTART.md`, `docs/15-scripts-order.md`, `docs/profiles.md`, `docs/scripts-catalog.md`.
+  - Deliverable: добавить короткие сценарии: `Minimal VPS hardening`, `Proxy/x-ui VPS`, `Docker host`, `AI automation stack`.
+  - User requirement: каждый сценарий должен показывать только нужные scripts и не тащить AI stack в minimal/proxy.
+  - Scope limit: README остаётся landing page; подробности уходят в `docs/profiles.md` и `docs/scripts-catalog.md`.
+  - Logging requirements: не применимо к docs; docs должны показывать ожидаемые предупреждения preflight.
+  - Dependencies: Task 3, Task 4, Task 11, Task 12.
 
-- [x] **Task 11: Обновить Quick Start и security docs без дублирования подробного guide**
-  - Файлы: `README.md`, `QUICKSTART.md`, `docs/01-server-security.md`, `docs/01-server-security-hardening.md`, `docs/15-scripts-order.md`.
-  - Deliverable: короткие ссылки на `docs/ssh-keys.md`, явное указание “на клиентской машине”, pre-hardening checklist и минимальный server-side fallback.
-  - `README.md` и `QUICKSTART.md` должны оставаться короткими landing/quick path, без копирования всего GitHub guide.
-  - `docs/15-scripts-order.md` должен остаться согласованным с тем, что `scripts/01-setup-ssh-keys.sh` запускается на клиентской машине.
-  - Logging: не применимо к docs.
-  - Dependencies: Task 10.
+- [x] **Task 14: Обновить AI context после новой структуры**
+  - Files: `AGENTS.md`, `.ai-factory/rules/base.md`, `.ai-factory/DESCRIPTION.md`, `.ai-factory/ARCHITECTURE.md`.
+  - Deliverable: отразить profile-aware architecture, `scripts/security/`, compatibility wrapper и правило “короткий script = одна функция”.
+  - Logging requirements: не применимо к docs; правила должны явно запрещать многостраничные scripts без необходимости.
+  - Dependencies: Task 10, Task 13.
 
-### Phase 5 — Verification
+### Phase 5: Verification
 
-- [x] **Task 12: Проверить Bash syntax и основные интерактивные ветки**
-  - Файлы: `scripts/01-setup-ssh-keys.sh`, `scripts/98-verify-scripts.sh`.
-  - Deliverable: `bash scripts/98-verify-scripts.sh` проходит; если ShellCheck установлен, нет новых критичных предупреждений.
-  - Добавить ручной QA checklist для сценариев: GitHub default account, GitHub alias account, VPS/root, deploy with empty passphrase confirmation, existing key, config alias conflict.
-  - Не выполнять реальные подключения к production VPS и не копировать ключи на сервер без явного подтверждения.
-  - Logging: убедиться, что warnings появляются для empty passphrase и private-key safety.
-  - Dependencies: Task 1-11.
+- [x] **Task 15: Обновить verification под subdirectories**
+  - Files: `scripts/98-verify-scripts.sh`.
+  - Deliverable: проверять top-level `scripts/*.sh` и новые `scripts/security/*.sh` без запуска privileged setup logic.
+  - Behavior: если `scripts/security/` ещё не существует, verification не должен падать.
+  - Logging requirements: verification script логирует только статусы проверок, без secrets и без запуска destructive setup scripts.
+  - Dependencies: Task 5.
 
-### `scripts/01-setup-ssh-keys.sh`
-
-- Добавить выбор сценария в начале интерактива: GitHub, VPS/root, deploy, backup/rescue, existing key.
-- Сохранить текущий путь “подключение к серверу” как совместимый интерактивный сценарий, но переименовать его внутри логики в `vps-root` или `server`.
-- Добавить функцию нормализации `sanitize_component`, чтобы purpose/account/device безопасно попадали в имя файла: lowercase, замена пробелов на `-` или `_`, запрет `/`, `..`, shell metacharacters.
-- Изменить `generate_key_name` на стандарт `<purpose>_<account-or-server>_<device>`.
-- Добавить генерацию комментария: `email | purpose | account/server | device | date`.
-- Добавить интерактивный выбор passphrase: “использовать passphrase?”, “ввести вручную через ssh-keygen prompt?”.
-- Не передавать `-N ""`, если пользователь не выбрал пустую passphrase явно.
-- Практичный вариант: для passphrase использовать обычный prompt `ssh-keygen`, то есть не передавать `-N`, кроме случая явного empty-passphrase.
-- Для explicit empty passphrase использовать `-N ""`, но только после предупреждения и подтверждения.
-- Добавить функцию `fix_ssh_permissions`, которая выполняет `chmod 700 ~/.ssh`, `chmod 600 ~/.ssh/config`, `chmod 600 "$key_path"`, `chmod 644 "$key_path.pub"`.
-- Добавить GitHub flow без копирования на сервер: сгенерировать ключ, вывести `.pub`, показать URL GitHub settings, предложить `ssh -T git@github.com`.
-- Добавить GitHub `~/.ssh/config` entries.
-- Для одного GitHub аккаунта использовать `Host github.com` только если пользователь явно выбирает default.
-- Для нескольких аккаунтов рекомендовать alias вида `github-rokolslab` и `github-rokols2017`.
-- Для server/deploy flow оставить `ssh-copy-id`, ручной fallback и SSH test.
-- Добавить предупреждения перед выводом ключа: выводится только публичный ключ `.pub`; приватный ключ не показывать.
-- Не усложнять скрипт до enterprise-инсталлятора: оставить один Bash-файл, интерактивные вопросы, без внешних зависимостей кроме OpenSSH tools.
-
-### `README.md`
-
-- В Quick Start заменить короткую строку “Prepare SSH keys from the client machine” на более явную.
-- Указать, что `scripts/01-setup-ssh-keys.sh` запускается на рабочей машине, не на сервере.
-- Добавить ссылку на подробный документ `docs/ssh-keys.md` или соответствующий раздел security docs.
-- Сохранить общий Quick Start компактным.
-
-### `QUICKSTART.md`
-
-- Расширить раздел `## 3. Подготовьте SSH-ключи`.
-- Добавить короткое различение: GitHub ключ нужен для работы с репозиториями, VPS/root ключ нужен для входа на сервер, deploy ключ нужен для автоматизации.
-- Явно написать: команды генерации выполняются на клиентской машине.
-- Перед hardening оставить требование проверить доступ по ключу.
-- Добавить минимальную проверку прав `~/.ssh`.
-- Добавить ссылку на новый `docs/ssh-keys.md`.
-
-### `docs/01-server-security.md`
-
-- Добавить краткий pre-hardening checklist:
-- ключ создан на клиентской машине;
-- публичный ключ добавлен в `authorized_keys`;
-- вход по ключу проверен во второй SSH-сессии;
-- root/password hardening включается только после проверки.
-- Сослаться на `docs/ssh-keys.md`.
-- Не перегружать этот файл GitHub-деталями.
-
-### `docs/01-server-security-hardening.md`
-
-- Заменить текущий короткий блок `SSH-ключи` на ссылку на `docs/ssh-keys.md` плюс минимальный server-side fallback.
-- Оставить команды ручной настройки `authorized_keys`, но добавить предупреждение: вставлять только публичный ключ.
-- Уточнить права `~/.ssh` и `authorized_keys`.
-
-### `docs/ssh-keys.md`
-
-- Создать как основной подробный документ.
-- Разделы: где выполнять команды, стандарт именования, стандарт комментариев, passphrase policy, GitHub key, VPS/root key, deploy key, backup/rescue key, existing key, `~/.ssh/config`, permissions, типовые ошибки, отзыв и ротация ключей, что никогда не делать.
-
-## Команды для документации
-
-Базовые права:
-
-```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-touch ~/.ssh/config
-chmod 600 ~/.ssh/config
-```
-
-Генерация GitHub-ключа с passphrase prompt:
-
-```bash
-ssh-keygen -t ed25519 \
-  -f ~/.ssh/github_rokolslab_ubuntu_pc \
-  -C "rokols2017@gmail.com | github | rokolslab | ubuntu-pc | 2026-05-16"
-```
-
-Показать только публичный ключ:
-
-```bash
-cat ~/.ssh/github_rokolslab_ubuntu_pc.pub
-```
-
-Права на ключи:
-
-```bash
-chmod 600 ~/.ssh/github_rokolslab_ubuntu_pc
-chmod 644 ~/.ssh/github_rokolslab_ubuntu_pc.pub
-```
-
-GitHub config для одного аккаунта:
-
-```sshconfig
-Host github.com
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/github_rokolslab_ubuntu_pc
-    IdentitiesOnly yes
-```
-
-GitHub config для нескольких аккаунтов:
-
-```sshconfig
-Host github-rokolslab
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/github_rokolslab_ubuntu_pc
-    IdentitiesOnly yes
-
-Host github-rokols2017
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/github_rokols2017_thinkpad
-    IdentitiesOnly yes
-```
-
-Проверка GitHub:
-
-```bash
-ssh -T git@github.com
-ssh -T git@github-rokolslab
-```
-
-Clone через alias:
-
-```bash
-git clone git@github-rokolslab:RoKols2017/install_ubuntu.git
-```
-
-Генерация VPS/root ключа:
-
-```bash
-ssh-keygen -t ed25519 \
-  -f ~/.ssh/vps-fi-01_root_ubuntu_pc \
-  -C "rokols2017@gmail.com | vps-root | vps-fi-01/root | ubuntu-pc | 2026-05-16"
-```
-
-Копирование на сервер:
-
-```bash
-ssh-copy-id -i ~/.ssh/vps-fi-01_root_ubuntu_pc.pub -p 22 root@SERVER_IP
-```
-
-Проверка входа:
-
-```bash
-ssh -i ~/.ssh/vps-fi-01_root_ubuntu_pc -p 22 root@SERVER_IP
-```
-
-Server alias:
-
-```sshconfig
-Host vps-fi-01-root
-    HostName SERVER_IP
-    User root
-    Port 22
-    IdentityFile ~/.ssh/vps-fi-01_root_ubuntu_pc
-    IdentitiesOnly yes
-```
-
-Deploy key с явным предупреждением про пустую passphrase:
-
-```bash
-ssh-keygen -t ed25519 \
-  -f ~/.ssh/prod-n8n_deploy_mini_pc \
-  -C "ops@example.com | deploy | prod-n8n/deploy | mini-pc | 2026-05-16"
-```
-
-Ручное добавление публичного ключа на сервере:
-
-```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-printf '%s\n' 'PASTE_PUBLIC_KEY_HERE' >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-```
-
-Диагностика GitHub `Permission denied (publickey)`:
-
-```bash
-ssh -vT git@github.com
-ssh-add -l
-git remote -v
-```
-
-Проверка remote для alias:
-
-```bash
-git remote set-url origin git@github-rokolslab:RoKols2017/install_ubuntu.git
-```
-
-## Acceptance Criteria
-
-- Скрипт сохраняет текущий интерактивный VPS/server сценарий и не требует root.
-- Скрипт не использует пустую passphrase без явного выбора пользователя.
-- Скрипт генерирует имена по стандарту `<purpose>_<account-or-server>_<device>`.
-- Скрипт генерирует комментарии по стандарту `email | purpose | account/server | device | date`.
-- Скрипт поддерживает минимум сценарии `GitHub`, `VPS/root`, `deploy`, `backup/rescue`, `existing key`.
-- Скрипт выставляет права `700` для `~/.ssh`, `600` для private key/config, `644` для public key.
-- GitHub flow не пытается копировать ключ на VPS и объясняет, что в GitHub добавляется только `.pub`.
-- `~/.ssh/config` содержит `IdentityFile` и `IdentitiesOnly yes`.
-- Документация ясно разделяет команды для клиентской машины и команды для сервера.
-- `README.md` и `QUICKSTART.md` остаются короткими, но ссылаются на подробный SSH-документ.
-- `docs/ssh-keys.md` покрывает GitHub, VPS/root, deploy, backup/rescue, existing key, permissions, troubleshooting и key rotation.
-- В документации нет RSA как дефолта.
-- В документации нет реальных приватных ключей, токенов или секретов.
-- `bash scripts/98-verify-scripts.sh` проходит после реализации.
-- При наличии ShellCheck скрипт проходит без предупреждений.
-
-## Что не менять
-
-- Не менять порядок установки: SSH-ключи остаются шагом до `scripts/02-secure-server.sh`.
-- Не превращать `scripts/01-setup-ssh-keys.sh` в неинтерактивный enterprise-инсталлятор.
-- Не требовать GitHub CLI, API tokens или web automation.
-- Не удалять поддержку `ssh-copy-id`.
-- Не ломать сценарий существующего ключа.
-- Не менять hardening-логику в `scripts/02-secure-server.sh` в рамках этой задачи.
-- Не добавлять реальные ключи, `.env`, токены или персональные secrets.
-- Не делать RSA дефолтом; `ed25519` оставить основным вариантом.
-
-## Недостающие данные
-
-Реальные имена GitHub-аккаунтов, серверов, deploy-пользователей и рабочих устройств должны вводиться пользователем или оставаться примерами. Их не нужно угадывать в коде или документации.
+- [x] **Task 16: Проверить Bash и документационную согласованность**
+  - Files: all changed `scripts/**/*.sh`, `README.md`, `QUICKSTART.md`, `docs/15-scripts-order.md`, `docs/profiles.md`, `docs/scripts-catalog.md`, `requirements/system-requirements.md`.
+  - Deliverable: `bash scripts/98-verify-scripts.sh` проходит; при наличии ShellCheck нет новых критичных предупреждений; docs не противоречат profile flows.
+  - Add checks: убедиться, что старые команды либо работают через wrapper, либо явно заменены в docs.
+  - Logging requirements: итоговая проверка должна выводить compact summary по профилям и scripts.
+  - Dependencies: Task 1-15.
 
 ## Commit Plan
 
-- `docs: plan ssh key management improvements` — сохранить план.
-- При реализации: `feat: improve ssh key setup scenarios` — изменения скрипта.
-- При реализации: `docs: document ssh key workflows` — документация и ссылки.
+- **Commit 1** (after tasks 1-4): `feat: add profile-aware preflight and docs catalog`
+- **Commit 2** (after tasks 5-9): `feat: split security baseline into focused modules`
+- **Commit 3** (after tasks 10-12): `feat: separate compatibility and profile readiness flows`
+- **Commit 4** (after tasks 13-16): `docs: document vps profiles and script responsibilities`
+
+## Acceptance Criteria
+
+- Пользователь видит, какой script что делает, до запуска privileged команд.
+- `1 vCPU / 1GB RAM` классифицируется как подходящий минимум для `minimal`/`proxy`, но не для `ai-stack`.
+- `minimal` flow не требует Docker, Supabase, Redis, n8n, monitoring или `.env`.
+- `proxy` flow не открывает service ports автоматически без явного `--allow-port` или ручной команды.
+- `ai-stack` сохраняет текущий тяжёлый сценарий, но больше не выглядит дефолтом для всех VPS.
+- Старый `scripts/02-secure-server.sh` не исчезает без объяснения и не ломает существующие ссылки молча.
+- Новые security modules не конфликтуют с исторической нумерацией top-level scripts.
+- `scripts/98-verify-scripts.sh` проверяет новые subdirectory scripts.
+- Документация `README.md`, `QUICKSTART.md`, `docs/15-scripts-order.md`, `docs/profiles.md` и `docs/scripts-catalog.md` согласована.
+
+## Implementation Notes
+
+- Предпочесть маленькие `case "$PROFILE"` блоки вместо абстрактной системы plugins.
+- Не удалять старые scripts резко, если проще оставить thin wrapper с warning и вызовом новых scripts.
+- Для destructive действий использовать подтверждение или безопасный пропуск с warning.
+- Не запускать setup scripts с `sudo` во время разработки; проверять синтаксис локально.
+- Не добавлять auto-install x-ui/3x-ui в рамках этой унификации; профиль `proxy` только готовит безопасную базу и firewall policy.

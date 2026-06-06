@@ -6,10 +6,12 @@
 
 ## Предварительные требования
 
+Это руководство относится к профилю `ai-stack`. Для маленьких `minimal`/`proxy` VPS используйте [Quick Start](../QUICKSTART.md) и [VPS Profiles](profiles.md), а не этот тяжёлый compose flow.
+
 - Ubuntu сервер с настроенной безопасностью ([Этап 1](01-server-security.md))
 - Docker и Docker Compose установлены ([Этап 2](02-docker-installation.md))
-- Минимум 4 GB RAM (рекомендуется 8 GB+)
-- 50 GB свободного места на диске
+- Минимум 4 GB RAM (рекомендуется 8 GB+) для `ai-stack`
+- 50 GB свободного места на диске для `ai-stack`
 - Для нового железа (bare metal): [драйверы и совместимость](08-hardware-drivers.md)
 
 ## Обзор компонентов
@@ -69,9 +71,8 @@
 Для быстрой установки всех компонентов используйте единый Docker Compose:
 
 ```bash
+sudo bash scripts/12-generate-secrets.sh --profile ai-stack
 cd docker-compose
-cp env.example .env
-# Отредактируйте .env и измените пароли (обязательные значения)
 docker compose --env-file .env up -d
 ```
 
