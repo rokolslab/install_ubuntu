@@ -14,6 +14,16 @@
 | `web` | Небольшой web/app VPS | 1GB RAM, 15GB disk | minimal flow + Nginx/reverse proxy |
 | `ai-stack` | n8n/Supabase/Redis/pgvector stack | 4GB RAM, 50GB disk | Docker, secrets, compose stack, ready checks |
 
+## Optional Swap For Small VPS
+
+Если preflight показывает `WARN` из-за малой RAM или отсутствия swap, используйте optional module:
+
+```bash
+sudo bash scripts/security/swap.sh --size 1G
+```
+
+Если swap уже есть, script только показывает статус и ничего не меняет. Пересоздание требует явного `--force-recreate`.
+
 ## Preflight States
 
 `scripts/00-preflight-check.sh` выводит таблицу пригодности:
@@ -45,10 +55,10 @@ sudo bash scripts/02-secure-server.sh
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile proxy
 bash scripts/01-setup-ssh-keys.sh
-sudo bash scripts/02-secure-server.sh
+sudo bash scripts/02-security-baseline.sh --profile proxy --allow-port <service-port>
 ```
 
-Не открывайте panel/service ports вслепую. После установки панели явно разрешите только нужные порты.
+Не открывайте panel/service ports вслепую. Если порт ещё неизвестен, запустите baseline без `--allow-port`, установите панель, затем явно разрешите только нужный порт.
 
 ## Docker Host
 
@@ -63,6 +73,10 @@ sudo bash scripts/03-install-docker.sh
 
 Если preflight показывает `WARN`, обычно включите swap или увеличьте RAM перед постоянными Docker workloads.
 
+```bash
+sudo bash scripts/security/swap.sh --size 1G
+```
+
 ## Web/App VPS
 
 Используйте для маленького web/app сервера с HTTP/HTTPS entry point.
@@ -74,7 +88,7 @@ sudo bash scripts/02-secure-server.sh
 sudo bash scripts/08-setup-nginx.sh
 ```
 
-`80/443` относятся к web/reverse proxy сценарию. Они не должны открываться как часть любого hardening.
+`80/443` относятся к web/reverse proxy сценарию. Firewall module открывает их для `web`/`ai-stack`, но не для `minimal`, `proxy` или `docker-host` без явного `--allow-port`.
 
 ## AI Stack
 

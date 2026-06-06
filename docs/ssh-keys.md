@@ -159,7 +159,7 @@ Host vps-fi-01-root
     IdentitiesOnly yes
 ```
 
-После проверки ключевого доступа можно выполнять hardening и ограничивать root/password login.
+После проверки ключевого доступа можно выполнять hardening. Важно: отключение `PermitRootLogin` безопасно только если есть отдельный non-root пользователь с рабочим SSH key access. Если доступ есть только к `root`, сначала создайте admin/deploy пользователя, добавьте его публичный ключ и проверьте вход во второй SSH-сессии.
 
 ## Deploy key
 
@@ -202,6 +202,16 @@ chmod 600 ~/.ssh/authorized_keys
 ```
 
 Не вставляйте приватный ключ и не храните его на сервере без явной необходимости.
+
+## Перед SSH Hardening
+
+Перед запуском `scripts/security/ssh-hardening.sh` проверьте non-root key access:
+
+```bash
+ssh -i ~/.ssh/vps-fi-01_admin_ubuntu_pc admin@SERVER_IP
+```
+
+Держите текущую SSH-сессию открытой, пока не проверите новый вход. Скрипт делает backup `/etc/ssh/sshd_config`, запускает `sshd -t` и откатывает config при ошибке. Если non-root `authorized_keys` не найден, script не отключает root/password login и печатает warning.
 
 ## Типовые ошибки
 

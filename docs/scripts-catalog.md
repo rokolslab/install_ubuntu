@@ -11,7 +11,8 @@
 | `scripts/00-preflight-check.sh` | Проверяет Ubuntu, ресурсы, базовые утилиты и классифицирует пригодность сервера | all | Самым первым шагом, до privileged изменений | Не устанавливает пакеты и не меняет систему |
 | `scripts/01-setup-ssh-keys.sh` | Готовит SSH keys для GitHub, VPS/root, deploy и backup сценариев | all | На клиентской машине до SSH hardening | Не меняет firewall и не ставит server packages |
 | `scripts/02-secure-server.sh` | Текущий server hardening: SSH, UFW, fail2ban, unattended upgrades | all | После preflight и подготовки SSH access | Не устанавливает Docker, n8n, Supabase или Redis |
-| `scripts/02-security-baseline.sh` | Планируемый короткий orchestrator security baseline | `minimal`, `proxy`, `docker-host`, `web`, `ai-stack` | После разделения security modules | Пока не является текущим entry point |
+| `scripts/02-security-baseline.sh` | Короткий orchestrator security baseline | `minimal`, `proxy`, `docker-host`, `web`, `ai-stack` | После preflight и SSH keys | Не устанавливает Docker, Nginx, Supabase, Redis или n8n |
+| `scripts/security/swap.sh` | Optional idempotent swapfile для маленьких VPS | `minimal`, `proxy`, `docker-host` | Если preflight показывает малую RAM/no swap | Не пересоздаёт существующий swap без `--force-recreate` |
 | `scripts/03-install-docker.sh` | Устанавливает Docker Engine и Docker Compose | `docker-host`, `ai-stack` | После security baseline, если профиль требует контейнеры | Не поднимает compose stack |
 | `scripts/04-setup-supabase.sh` | Готовит Supabase/PostgreSQL компоненты | `ai-stack` | Только в AI stack flow | Не нужен для minimal/proxy VPS |
 | `scripts/05-setup-n8n.sh` | Настраивает n8n main/worker | `ai-stack` | После DB/Redis prerequisites | Не ставит Docker и не генерирует secrets |
@@ -38,15 +39,21 @@ sudo bash scripts/99-ready-checks.sh --profile minimal
 
 Ожидаемые предупреждения preflight: Docker и `.env` могут отсутствовать; это нормально для `minimal`.
 
+Если RAM мала и swap отсутствует:
+
+```bash
+sudo bash scripts/security/swap.sh --size 1G
+```
+
 ### Proxy/x-ui VPS
 
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile proxy
 bash scripts/01-setup-ssh-keys.sh
-sudo bash scripts/02-secure-server.sh
+sudo bash scripts/02-security-baseline.sh --profile proxy --allow-port <service-port>
 ```
 
-Service ports для x-ui/3x-ui/VPN не должны открываться автоматически. Открывайте их явно после установки панели и понимания нужных портов.
+Service ports для x-ui/3x-ui/VPN не открываются автоматически. Если порт ещё неизвестен, запустите baseline без `--allow-port`, затем откройте порт вручную после установки панели.
 
 ### Docker Host
 
@@ -58,6 +65,10 @@ sudo bash scripts/03-install-docker.sh
 ```
 
 Если preflight показывает `WARN`, обычно нужен swap или больше RAM перед постоянными Docker workloads.
+
+```bash
+sudo bash scripts/security/swap.sh --size 1G
+```
 
 ### Web/App VPS
 
@@ -84,6 +95,18 @@ sudo bash ../scripts/99-ready-checks.sh
 ```
 
 `ai-stack` требует больше ресурсов. `4GB RAM / 50GB disk` относится именно к этому профилю, а не к minimal/proxy VPS.
+
+## Firewall Rules
+
+`scripts/security/firewall.sh` сохраняет SSH port и применяет UFW default deny incoming. Порты `80/443` открываются только для `web`/`ai-stack` или через явный `--allow-port`.
+
+Proxy/x-ui пример:
+
+```bash
+sudo bash scripts/security/firewall.sh --profile proxy --allow-port <service-port>
+```
+
+Если service port ещё неизвестен, не открывайте его заранее. Сначала установите panel, затем разрешите только фактический порт.
 
 ## See Also
 

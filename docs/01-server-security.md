@@ -22,18 +22,18 @@
 ## Быстрый путь
 
 ```bash
-sudo bash scripts/02-secure-server.sh
+sudo bash scripts/02-security-baseline.sh --profile minimal
 ```
 
-Скрипт автоматизирует основные шаги: обновление системы, UFW, SSH hardening, fail2ban и unattended upgrades.
+Новый baseline вызывает короткие security modules: updates, UFW, SSH hardening, fail2ban, unattended upgrades и sysctl hardening. Старый `scripts/02-secure-server.sh` сохраняется как compatibility path до полной миграции.
 
 ## Что настраивается
 
 | Блок | Назначение | Проверка |
 |------|------------|----------|
 | System updates | обновление пакетов и cleanup | `sudo apt update` |
-| UFW | разрешить SSH/HTTP/HTTPS и закрыть остальное | `sudo ufw status verbose` |
-| SSH | запрет root-login, пустых паролей, ограничение попыток | `sudo sshd -t` |
+| UFW | сохранить SSH, default deny incoming, открыть profile ports | `sudo ufw status verbose` |
+| SSH | backup config, запрет пустых паролей, ограничение попыток, safe root/password policy | `sudo sshd -t` |
 | fail2ban | защита SSH от brute force | `sudo fail2ban-client status sshd` |
 | unattended upgrades | автоматические security updates | `systemctl status unattended-upgrades` |
 
@@ -52,28 +52,23 @@ sudo apt autoremove -y
 
 ```bash
 sudo ufw allow 22/tcp comment 'SSH'
-sudo ufw allow 80/tcp comment 'HTTP'
-sudo ufw allow 443/tcp comment 'HTTPS'
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
 sudo ufw --force enable
 sudo ufw status verbose
 ```
+
+`80/443` открывайте только для `web`/`ai-stack` или явного reverse proxy сценария.
 
 ### 3. Проверьте SSH hardening
 
 Минимальные настройки:
 
 ```bash
-sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
-sudo sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sudo sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sudo sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
-sudo sed -i 's/^PermitEmptyPasswords yes/PermitEmptyPasswords no/' /etc/ssh/sshd_config
-sudo sed -i 's/#MaxAuthTries 6/MaxAuthTries 3/' /etc/ssh/sshd_config
-sudo sshd -t
-sudo systemctl restart sshd
+sudo bash scripts/security/ssh-hardening.sh
 ```
 
-Отключайте password auth только после подтверждения доступа по SSH-ключу.
+`scripts/security/ssh-hardening.sh` делает timestamped backup `sshd_config`, проверяет `sshd -t` и выполняет rollback при ошибке. `PermitRootLogin no` и `PasswordAuthentication no` применяются только если есть подтверждённый non-root пользователь с `authorized_keys`; иначе script печатает warning и пропускает опасный шаг.
 
 ### 4. Установите fail2ban
 
