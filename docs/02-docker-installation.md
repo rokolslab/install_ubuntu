@@ -247,8 +247,10 @@ sudo rm -rf /etc/docker
 Для автоматической установки используйте скрипт:
 
 ```bash
-sudo bash scripts/03-install-docker.sh
+sudo bash scripts/03-install-docker.sh --profile docker-host
 ```
+
+Для полного AI automation stack используйте `--profile ai-stack`. Docker не нужен для `minimal`/`proxy` по умолчанию.
 
 ## Полезные команды Docker
 

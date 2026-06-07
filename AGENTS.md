@@ -51,14 +51,31 @@
 | Документ | Путь | Описание |
 |----------|------|----------|
 | README | `README.md` | Главный обзор проекта. |
-| Quick Start | `QUICKSTART.md` | Краткая инструкция установки. |
+| Quick Start | `QUICKSTART.md` | Profile-aware быстрый старт. |
+| System Requirements | `requirements/system-requirements.md` | Требования по профилям. |
 | VPS Profiles | `docs/profiles.md` | Профили minimal/proxy/docker-host/web/ai-stack. |
-| Scripts Catalog | `docs/scripts-catalog.md` | Назначение каждого script и profile flows. |
+| Server Security | `docs/01-server-security.md` | SSH, UFW и fail2ban. |
 | SSH Keys | `docs/ssh-keys.md` | Сценарии SSH-ключей для GitHub, VPS/root, deploy и backup доступа. |
+| Scripts Catalog | `docs/scripts-catalog.md` | Назначение каждого script и profile flows. |
+| Security Hardening Details | `docs/01-server-security-hardening.md` | Advanced security notes. |
+| Docker Installation | `docs/02-docker-installation.md` | Docker Engine и Compose. |
+| Infrastructure Setup | `docs/03-infrastructure-setup.md` | AI-stack compose flow. |
 | Architecture | `docs/architecture.md` | Runtime-компоненты и data flow. |
 | Operations | `docs/architecture-operations.md` | Масштабирование, backup и performance notes. |
+| Supabase | `docs/03-supabase.md` | Self-hosted Supabase setup. |
+| n8n | `docs/04-n8n.md` | n8n main/worker deployment. |
+| Redis | `docs/05-redis.md` | Redis queues/cache. |
+| pgvector | `docs/06-vector-db.md` | Vector search setup. |
+| Nginx | `docs/07-nginx.md` | Reverse proxy и SSL. |
+| Nginx Operations | `docs/07-nginx-operations.md` | Advanced proxy notes. |
+| Hardware Drivers | `docs/08-hardware-drivers.md` | GPU/NIC compatibility. |
+| Monitoring | `docs/09-monitoring.md` | Prometheus/Grafana notes. |
+| Backups | `docs/10-backup-restore.md` | PostgreSQL backup/restore. |
+| Troubleshooting | `docs/11-troubleshooting.md` | Common failure modes. |
+| Quality Checks | `docs/12-quality-checks.md` | Validation checks. |
+| Secrets | `docs/13-secrets.md` | `.env` и rotation. |
+| Ready Rules | `docs/14-ready-rules.md` | Installation gates. |
 | Scripts Order | `docs/15-scripts-order.md` | Канонический порядок запуска скриптов. |
-| System Requirements | `requirements/system-requirements.md` | Требования к серверу. |
 
 ## AI Context Files
 

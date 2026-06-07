@@ -27,8 +27,8 @@ bash scripts/01-setup-ssh-keys.sh
 Примеры:
 
 ```text
-~/.ssh/github_rokolslab_ubuntu_pc
-~/.ssh/github_rokols2017_thinkpad
+~/.ssh/github_rokollab_ubuntu_pc
+~/.ssh/github_project-admin_thinkpad
 ~/.ssh/vps-fi-01_root_ubuntu_pc
 ~/.ssh/prod-n8n_deploy_mini_pc
 ```
@@ -44,7 +44,7 @@ email | purpose | account/server | device | date
 Пример:
 
 ```text
-rokols2017@gmail.com | github | rokolslab | ubuntu-pc | 2026-05-16
+admin@example.com | github | RokolLab | ubuntu-pc | 2026-05-16
 ```
 
 ## Passphrase policy
@@ -65,8 +65,8 @@ chmod 600 ~/.ssh/config
 Для ключей:
 
 ```bash
-chmod 600 ~/.ssh/github_rokolslab_ubuntu_pc
-chmod 644 ~/.ssh/github_rokolslab_ubuntu_pc.pub
+chmod 600 ~/.ssh/github_rokollab_ubuntu_pc
+chmod 644 ~/.ssh/github_rokollab_ubuntu_pc.pub
 ```
 
 ## GitHub key
@@ -75,14 +75,14 @@ chmod 644 ~/.ssh/github_rokolslab_ubuntu_pc.pub
 
 ```bash
 ssh-keygen -t ed25519 \
-  -f ~/.ssh/github_rokolslab_ubuntu_pc \
-  -C "rokols2017@gmail.com | github | rokolslab | ubuntu-pc | 2026-05-16"
+  -f ~/.ssh/github_rokollab_ubuntu_pc \
+  -C "admin@example.com | github | RokolLab | ubuntu-pc | 2026-05-16"
 ```
 
 Покажите публичный ключ:
 
 ```bash
-cat ~/.ssh/github_rokolslab_ubuntu_pc.pub
+cat ~/.ssh/github_rokollab_ubuntu_pc.pub
 ```
 
 Добавьте именно `.pub` в GitHub: `Settings` → `SSH and GPG keys` → `New SSH key`.
@@ -93,23 +93,23 @@ cat ~/.ssh/github_rokolslab_ubuntu_pc.pub
 Host github.com
     HostName github.com
     User git
-    IdentityFile ~/.ssh/github_rokolslab_ubuntu_pc
+    IdentityFile ~/.ssh/github_rokollab_ubuntu_pc
     IdentitiesOnly yes
 ```
 
 Для нескольких GitHub-аккаунтов используйте aliases:
 
 ```sshconfig
-Host github-rokolslab
+Host github-rokollab
     HostName github.com
     User git
-    IdentityFile ~/.ssh/github_rokolslab_ubuntu_pc
+    IdentityFile ~/.ssh/github_rokollab_ubuntu_pc
     IdentitiesOnly yes
 
-Host github-rokols2017
+Host github-project-admin
     HostName github.com
     User git
-    IdentityFile ~/.ssh/github_rokols2017_thinkpad
+    IdentityFile ~/.ssh/github_project-admin_thinkpad
     IdentitiesOnly yes
 ```
 
@@ -117,13 +117,13 @@ Host github-rokols2017
 
 ```bash
 ssh -T git@github.com
-ssh -T git@github-rokolslab
+ssh -T git@github-rokollab
 ```
 
 Clone через alias:
 
 ```bash
-git clone git@github-rokolslab:RoKols2017/install_ubuntu.git
+git clone git@github-rokollab:RokolLab/install_ubuntu.git
 ```
 
 ## VPS/root key
@@ -133,7 +133,7 @@ git clone git@github-rokolslab:RoKols2017/install_ubuntu.git
 ```bash
 ssh-keygen -t ed25519 \
   -f ~/.ssh/vps-fi-01_root_ubuntu_pc \
-  -C "rokols2017@gmail.com | vps-root | vps-fi-01/root | ubuntu-pc | 2026-05-16"
+  -C "admin@example.com | vps-root | vps-fi-01/root | ubuntu-pc | 2026-05-16"
 ```
 
 Скопируйте публичный ключ на сервер:
@@ -226,7 +226,7 @@ git remote -v
 Если используется alias, remote должен ссылаться на alias:
 
 ```bash
-git remote set-url origin git@github-rokolslab:RoKols2017/install_ubuntu.git
+git remote set-url origin git@github-rokollab:RokolLab/install_ubuntu.git
 ```
 
 Для VPS проверьте:

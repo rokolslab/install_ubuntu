@@ -150,7 +150,7 @@ docker compose ps
 4. ✅ Добавить предупреждения о ротации паролей.
 
 **Реализация:**
-- `scripts/12-generate-secrets.sh` — автогенерация всех секретов
+- `scripts/12-generate-secrets.sh --profile ai-stack` — автогенерация всех секретов
 - `env.example` — шаблон с плейсхолдерами (без реальных паролей)
 - `scripts/10-backup-postgres.sh` — использует `PGPASSFILE`
 - `docs/13-secrets.md` — документация по управлению секретами
@@ -246,7 +246,7 @@ sudo bash scripts/10-backup-postgres.sh
 
 **Реализация:**
 - `scripts/00-preflight-check.sh` — предварительная проверка системы
-- `scripts/99-ready-checks.sh` — проверка готовности после установки
+- `scripts/99-ready-checks.sh --profile <profile>` — profile-aware проверка готовности после установки
 - `docs/12-quality-checks.md` — руководство по проверке качества
 - `docs/14-ready-rules.md` — правила gate-проверок
 

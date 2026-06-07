@@ -25,7 +25,7 @@
 sudo bash scripts/02-security-baseline.sh --profile minimal
 ```
 
-Новый baseline вызывает короткие security modules: updates, UFW, SSH hardening, fail2ban, unattended upgrades и sysctl hardening. Старый `scripts/02-secure-server.sh` сохраняется как compatibility path до полной миграции.
+Новый baseline вызывает короткие security modules: updates, UFW, SSH hardening, fail2ban, unattended upgrades и sysctl hardening. Старый `scripts/02-secure-server.sh` сохраняется как deprecated compatibility wrapper и требует явный `--profile`.
 
 ## Что настраивается
 

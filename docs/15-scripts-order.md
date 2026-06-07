@@ -70,7 +70,7 @@ sudo bash scripts/99-ready-checks.sh --profile docker-host
 sudo bash scripts/00-preflight-check.sh --profile web
 bash scripts/01-setup-ssh-keys.sh
 sudo bash scripts/02-security-baseline.sh --profile web
-sudo bash scripts/08-setup-nginx.sh --profile web
+sudo bash scripts/08-setup-nginx.sh
 sudo bash scripts/99-ready-checks.sh --profile web
 ```
 

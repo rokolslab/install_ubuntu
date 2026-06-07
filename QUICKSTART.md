@@ -17,7 +17,7 @@
 ## 1. Получите проект
 
 ```bash
-git clone https://github.com/RoKols2017/install_ubuntu.git
+git clone https://github.com/RokolLab/install_ubuntu.git
 cd install_ubuntu
 ```
 
@@ -100,7 +100,7 @@ docker compose version
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile web
 sudo bash scripts/02-security-baseline.sh --profile web
-sudo bash scripts/08-setup-nginx.sh --profile web
+sudo bash scripts/08-setup-nginx.sh
 sudo bash scripts/99-ready-checks.sh --profile web
 ```
 

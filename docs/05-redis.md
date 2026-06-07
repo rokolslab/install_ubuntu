@@ -7,7 +7,7 @@ Redis используется как кэш и очередь задач для
 ## Предварительные требования
 
 - Docker и Docker Compose установлены: [Docker Installation](02-docker-installation.md).
-- Файл `docker-compose/.env` создан из `env.example` или через `scripts/12-generate-secrets.sh`.
+- Файл `docker-compose/.env` создан из `env.example` или через `scripts/12-generate-secrets.sh --profile ai-stack`.
 - Переменная `REDIS_PASSWORD` задана и не содержит placeholder-значение.
 
 ## Шаг 1: Установка Redis
@@ -30,7 +30,7 @@ docker compose --env-file .env up -d redis
 Сгенерируйте секреты автоматически:
 
 ```bash
-sudo bash scripts/12-generate-secrets.sh
+sudo bash scripts/12-generate-secrets.sh --profile ai-stack
 ```
 
 Или проверьте переменную вручную в `docker-compose/.env`:

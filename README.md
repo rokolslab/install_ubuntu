@@ -4,7 +4,7 @@
 
 `install_ubuntu` is a practical infrastructure starter kit for Ubuntu/VPS servers. It can prepare a tiny VPS for safe baseline hardening or a larger server for AI automation workloads: Telegram bots, LLM workflows, RAG systems, internal automation, and self-hosted services.
 
-This repository fits the RoKols2017 stack: **Linux/VPS · Docker · Python/LLM infrastructure · Telegram bots · RAG · automation workflows**. It is not a blind one-command installer. Choose a profile first, then run only the scripts needed for that server.
+This repository fits the RokolLab stack: **Linux/VPS · Docker · Python/LLM infrastructure · Telegram bots · RAG · automation workflows**. It is not a blind one-command installer. Choose a profile first, then run only the scripts needed for that server.
 
 ## Why It Exists
 
@@ -132,7 +132,7 @@ Do not use it as a blind one-command installer. Read the relevant guide before e
 
 ## Related Profile
 
-Built in the same practical direction as [RoKols2017](https://github.com/RoKols2017): AI automation, LLM workflows, Telegram bots and self-hosted Linux/VPS infrastructure for real working tasks.
+Built in the same practical direction as [RokolLab](https://github.com/RokolLab): AI automation, LLM workflows, Telegram bots and self-hosted Linux/VPS infrastructure for real working tasks.
 
 ## License
 
