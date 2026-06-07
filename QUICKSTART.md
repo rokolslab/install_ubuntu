@@ -17,7 +17,7 @@
 ## 1. Получите проект
 
 ```bash
-git clone https://github.com/RokolLab/install_ubuntu.git
+git clone https://github.com/RokolsLab/install_ubuntu.git
 cd install_ubuntu
 ```
 
