@@ -28,21 +28,21 @@
 
 ### Phase 1: Audit Structure And Safety Gaps
 
-1. Зафиксировать целевую структуру `docs/ssh-keys.md` перед правкой.
+1. [x] Зафиксировать целевую структуру `docs/ssh-keys.md` перед правкой.
    - Files: `docs/ssh-keys.md`.
    - Deliverable: обновлённый порядок разделов: overview, platform matrix, naming/comment standards, Linux/macOS, Windows OpenSSH/PowerShell, Git Bash/WSL, PuTTY/Pageant, GitHub, VPS/root/admin, deploy, backup/rescue, reinstall/recovery scenarios, pre-hardening checklist, troubleshooting, forbidden actions.
    - Expected behavior: документ остаётся self-contained и не превращает README в manual.
    - Logging/reporting: в итоговом summary отметить, какие разделы были переставлены или добавлены; secrets не выводить.
    - Dependencies: нет.
 
-2. Углубить объяснение составных частей имени SSH-ключа.
+2. [x] Углубить объяснение составных частей имени SSH-ключа.
    - Files: `docs/ssh-keys.md`.
    - Deliverable: добавить понятное пояснение формата имени, например `<purpose>_<target>_<role-or-user>_<device>` или текущего короткого `<purpose>_<account-or-server>_<device>`, с расшифровкой `purpose`, `account-or-server/target`, `role/user`, `device`; показать хорошие и плохие примеры.
    - Expected behavior: пользователь понимает, что имя ключа отвечает на вопросы “для чего?”, “куда/к какому аккаунту?”, “какая роль?”, “с какого устройства?”, и может безопасно найти ключи для ротации после потери устройства или смены VPS.
    - Logging/reporting: в summary отметить добавленную naming rationale; не использовать реальные email, IP или private key material.
    - Dependencies: Task 1.
 
-3. Усилить safety model для private/public keys.
+3. [x] Усилить safety model для private/public keys.
    - Files: `docs/ssh-keys.md`.
    - Deliverable: добавить объяснение, где генерируется private key, куда копируется только `.pub`, как отличать private/public key, почему нельзя хранить private key на VPS/GitHub/в репозитории.
    - Expected behavior: пользователь понимает, что команды чтения/копирования должны использовать только `.pub`, кроме локального использования private key в `ssh -i`.
@@ -51,28 +51,28 @@
 
 ### Phase 2: Add Windows Client Coverage
 
-4. Добавить раздел Windows OpenSSH и PowerShell.
+4. [x] Добавить раздел Windows OpenSSH и PowerShell.
    - Files: `docs/ssh-keys.md`.
    - Deliverable: команды для `ssh-keygen`, просмотра `.pub` через `Get-Content`, подключения через `ssh -i`, путь `$env:USERPROFILE\.ssh`, config path `C:\Users\<User>\.ssh\config`.
    - Expected behavior: Windows-пользователь может выполнить базовый GitHub/VPS flow без Git Bash и без Unix-only команд.
    - Logging/reporting: в summary перечислить Windows commands, которые были добавлены; не выводить private key contents.
    - Dependencies: Task 1.
 
-5. Добавить Windows `ssh-agent` и permissions/ACL guidance.
+5. [x] Добавить Windows `ssh-agent` и permissions/ACL guidance.
    - Files: `docs/ssh-keys.md`.
    - Deliverable: команды `Get-Service ssh-agent`, `Set-Service ssh-agent -StartupType Automatic`, `Start-Service ssh-agent`, `ssh-add`, `ssh-add -l`; предупреждение про `UNPROTECTED PRIVATE KEY FILE` и ограничение доступа к private key текущим пользователем.
    - Expected behavior: документ объясняет, почему Unix `chmod` не равен Windows ACL и что делать при ошибках permissions.
    - Logging/reporting: в summary отметить, что ACL guidance добавлен как безопасная рекомендация без агрессивных destructive команд.
    - Dependencies: Task 4.
 
-6. Добавить альтернативы `ssh-copy-id` для Windows.
+6. [x] Добавить альтернативы `ssh-copy-id` для Windows.
    - Files: `docs/ssh-keys.md`.
    - Deliverable: объяснить, что `ssh-copy-id` обычно отсутствует в native PowerShell; дать безопасный вариант ручного добавления `.pub` в `authorized_keys` и PowerShell pipeline/SSH fallback, если подходит.
    - Expected behavior: Windows-пользователь может добавить публичный ключ на VPS без установки дополнительных Unix tools.
    - Logging/reporting: в summary отметить выбранный способ и предупреждение о duplicate keys/ownership.
    - Dependencies: Task 4.
 
-7. Добавить Git Bash, WSL и PuTTY/Pageant notes.
+7. [x] Добавить Git Bash, WSL и PuTTY/Pageant notes.
    - Files: `docs/ssh-keys.md`.
    - Deliverable: коротко описать, когда использовать Git Bash/WSL, что `~/.ssh` в Git Bash мапится на Windows home, что PuTTY использует `.ppk`, PuTTYgen/Pageant применимы для PuTTY/Plink workflows, а Git for Windows обычно проще с OpenSSH keys.
    - Expected behavior: документ помогает выбрать инструмент, не смешивая incompatible key formats.
@@ -81,21 +81,21 @@
 
 ### Phase 3: Strengthen Server, GitHub And Recovery Flows
 
-8. Углубить GitHub key and alias flow для разных платформ.
+8. [x] Углубить GitHub key and alias flow для разных платформ.
    - Files: `docs/ssh-keys.md`.
    - Deliverable: сохранить canonical `RokolsLab` examples, добавить проверку `ssh -T git@github.com` / alias из PowerShell и Git Bash, объяснить `Host github-rokolslab` и `git remote set-url`.
    - Expected behavior: пользователь понимает разницу между GitHub account SSH key и repository deploy key.
    - Logging/reporting: в summary отметить alias/remote examples; не использовать реальные email/token values.
    - Dependencies: Tasks 4, 7.
 
-9. Добавить полноценный VPS/root/admin pre-hardening flow.
+9. [x] Добавить полноценный VPS/root/admin pre-hardening flow.
    - Files: `docs/ssh-keys.md`, возможно cross-link на `docs/01-server-security.md` и `docs/01-server-security-hardening.md`.
    - Deliverable: пошагово описать root key, создание non-root admin/deploy user, добавление public key, проверку второго SSH-сеанса, проверку `sudo`, сохранение текущей сессии открытой перед hardening.
    - Expected behavior: пользователь не запускает SSH hardening, пока не проверил non-root key access и recovery path.
    - Logging/reporting: в summary отметить added lockout-prevention checklist; не включать реальные server IP.
    - Dependencies: Task 3.
 
-10. Добавить сценарий “VPS переустановлен или пересоздан”.
+10. [x] Добавить сценарий “VPS переустановлен или пересоздан”.
     - Files: `docs/ssh-keys.md`.
     - Deliverable: объяснить разницу между старым client private key, новым client key и server host key; описать, что после переустановки VPS часто нужно удалить старый host key из `known_hosts`, обновить SSH config aliases при смене IP/user/key path, заново добавить новый `.pub` в `authorized_keys`, и удалить/закомментировать ссылки на старый private key.
     - Expected behavior: пользователь понимает, что warning `REMOTE HOST IDENTIFICATION HAS CHANGED` нельзя игнорировать вслепую; сначала надо подтвердить, что VPS действительно переустановлен/пересоздан, затем очистить старую запись и проверить новый fingerprint.
@@ -104,7 +104,7 @@
     - Logging/reporting: в summary отметить добавленный reinstall recovery flow; не включать реальные IP, fingerprints или private key contents.
     - Dependencies: Tasks 4, 6, 9.
 
-11. Уточнить deploy и backup/rescue key policy.
+11. [x] Уточнить deploy и backup/rescue key policy.
     - Files: `docs/ssh-keys.md`.
     - Deliverable: описать ограничения deploy keys, когда допустима empty passphrase, где хранить backup/rescue key, как ротировать и удалять скомпрометированные keys из GitHub/VPS.
     - Expected behavior: пользователь отделяет human admin access от automation/deploy access.
@@ -113,21 +113,21 @@
 
 ### Phase 4: Troubleshooting And Verification
 
-12. Расширить troubleshooting для Windows/Linux/macOS.
+12. [x] Расширить troubleshooting для Windows/Linux/macOS.
     - Files: `docs/ssh-keys.md`.
     - Deliverable: добавить симптомы и проверки: `Permission denied (publickey)`, wrong key selected, bad permissions/ACL, agent has no identities, GitHub alias mismatch, changed SSH port, UFW/fail2ban implications, stale `known_hosts` after VPS reinstall, stale `IdentityFile` in SSH config.
     - Expected behavior: пользователь получает route-to-fix без небезопасных советов вроде копирования private key на сервер или бездумного удаления host key без проверки причины.
     - Logging/reporting: в summary перечислить troubleshooting categories; не предлагать выводить private key.
     - Dependencies: Tasks 5, 6, 9, 10.
 
-13. Проверить cross-links и согласованность с project scripts.
+13. [x] Проверить cross-links и согласованность с project scripts.
     - Files: `docs/ssh-keys.md`, `docs/01-server-security.md`, `docs/01-server-security-hardening.md`, `docs/scripts-catalog.md` если понадобятся ссылки.
     - Deliverable: ссылки на relevant docs/scripts работают; документ честно говорит, что `scripts/01-setup-ssh-keys.sh` Bash-oriented и лучше подходит для Linux/macOS/WSL/Git Bash, не native PowerShell.
     - Expected behavior: документация не обещает Windows support в Bash script, если его нет в коде.
     - Logging/reporting: в summary отметить changed/added cross-links; никаких secrets.
     - Dependencies: Tasks 4-12.
 
-14. Провести mandatory docs checkpoint.
+14. [x] Провести mandatory docs checkpoint.
     - Files: `docs/ssh-keys.md` и любые затронутые docs.
     - Deliverable: финальная проверка readability, technical accuracy, internal links, canonical `RokolsLab` references, отсутствие secrets, отсутствие устаревших команд.
     - Expected behavior: `git diff --check` проходит; targeted grep не находит старые owner spellings или private-key anti-patterns.

@@ -19,7 +19,7 @@ sudo systemctl restart sshd
 
 ## SSH-ключи
 
-Основной guide по именованию, passphrase, GitHub, VPS/root, deploy и backup ключам: [SSH Keys](ssh-keys.md).
+Основной guide по именованию, passphrase, GitHub, Windows-клиентам, VPS/root/admin, deploy, backup и recovery ключам: [SSH Keys](ssh-keys.md).
 
 Минимальный сценарий на клиентской машине:
 

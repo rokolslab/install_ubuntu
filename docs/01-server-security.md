@@ -16,8 +16,9 @@
 - SSH-ключ создан или выбран на клиентской машине.
 - Публичный ключ добавлен в `~/.ssh/authorized_keys` нужного пользователя на сервере.
 - Вход по ключу проверен во второй SSH-сессии.
+- Для non-root пользователя проверен `sudo -v`.
 - Root/password hardening включается только после подтверждения ключевого доступа.
-- Подробный guide по GitHub, VPS/root, deploy и backup ключам: [SSH Keys](ssh-keys.md).
+- Подробный guide по GitHub, VPS/root/admin, Windows-клиентам, deploy, backup и recovery ключам: [SSH Keys](ssh-keys.md).
 
 ## Быстрый путь
 
