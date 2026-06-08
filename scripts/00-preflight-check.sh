@@ -27,7 +27,7 @@ profile_requirements() {
 
   case "$profile" in
     minimal) echo "512 5" ;;
-    proxy) echo "512 10" ;;
+    proxy) echo "512 5" ;;
     docker-host) echo "1024 10" ;;
     web) echo "1024 15" ;;
     ai-stack) echo "4096 50" ;;
@@ -101,7 +101,7 @@ profile_recommendation() {
 
   case "$profile" in
     proxy)
-      echo "service ports открывайте явно через firewall --allow-port <port>"
+      echo "service ports открывайте явно; 10GB+ disk рекомендуется для proxy panel logs/updates"
       ;;
     docker-host)
       if [ "$status" = "WARN" ]; then

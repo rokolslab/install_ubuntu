@@ -17,7 +17,7 @@
 | Profile | Назначение | Минимум | Рекомендуется | Docker нужен |
 |---|---|---:|---:|---|
 | `minimal` | Базовая безопасность маленького VPS | 512MB RAM, 5GB disk | 1GB RAM, swap | нет |
-| `proxy` | x-ui/3x-ui/VPN/proxy panel base | 512MB RAM, 10GB disk | 1GB RAM, swap | нет, если панель не требует Docker |
+| `proxy` | x-ui/3x-ui/VPN/proxy panel base | 512MB RAM, 5GB disk | 1GB RAM, 10GB+ disk, swap | нет, если панель не требует Docker |
 | `docker-host` | Маленький Docker host | 1GB RAM, 10GB disk | 2GB RAM, swap | да |
 | `web` | Небольшой web/app VPS | 1GB RAM, 15GB disk | 2GB RAM, swap | optional |
 | `ai-stack` | n8n/Supabase/Redis/pgvector stack | 4GB RAM, 50GB disk | 8GB+ RAM, 100GB+ SSD | да |
@@ -33,6 +33,8 @@
 | `NO` | Ресурсов недостаточно для профиля | Не запускать этот профиль на текущем сервере |
 
 Fatal-состояния ограничены реальными blockers: неподдерживаемая ОС, отсутствие root/sudo для system checks, критически малый диск даже для `minimal`.
+
+Для `proxy` 5GB свободного места достаточно для security baseline, UFW, fail2ban и базовой подготовки без установки панели. `10GB+` остаётся практической рекомендацией для самой proxy/VPN panel, логов, обновлений, backup configs и сценариев, где панель ставится через Docker или хранит заметный runtime state.
 
 Перед изменениями выполните:
 

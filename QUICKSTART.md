@@ -7,7 +7,7 @@
 | Профиль | Минимум | Для чего |
 |---------|---------|----------|
 | `minimal` | 512MB RAM, 5GB disk | базовая безопасность маленького VPS |
-| `proxy` | 512MB-1GB RAM, 10GB disk | база под x-ui/3x-ui/VPN/proxy panel |
+| `proxy` | 512MB-1GB RAM, 5GB disk minimum; 10GB+ recommended | база под x-ui/3x-ui/VPN/proxy panel |
 | `docker-host` | 1GB RAM, 10GB disk | маленький Docker host |
 | `web` | 1GB RAM, 15GB disk | web/app VPS с HTTP/HTTPS |
 | `ai-stack` | 4GB RAM, 50GB disk | n8n, Supabase/PostgreSQL, Redis, pgvector, monitoring |
@@ -54,6 +54,8 @@ sudo bash scripts/security/swap.sh --size 1G
 ## 4. Proxy/x-ui VPS
 
 Используйте для подготовки безопасной базы под proxy/VPN panel. Репозиторий не устанавливает x-ui/3x-ui автоматически.
+
+`5GB` свободного диска достаточно для security baseline. Для самой proxy/VPN panel, логов и обновлений лучше закладывать `10GB+`.
 
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile proxy

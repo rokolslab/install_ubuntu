@@ -9,7 +9,7 @@
 | Profile | Назначение | Минимум | Типичные scripts |
 |---|---|---:|---|
 | `minimal` | Базовая безопасность маленького VPS | 512MB RAM, 5GB disk | preflight, SSH keys, security baseline |
-| `proxy` | x-ui/3x-ui/VPN/proxy panel base | 512MB-1GB RAM, 10GB disk | minimal flow + явные service ports |
+| `proxy` | x-ui/3x-ui/VPN/proxy panel base | 512MB-1GB RAM, 5GB disk minimum; 10GB+ recommended | minimal flow + явные service ports |
 | `docker-host` | Маленький Docker host | 1GB RAM, 10GB disk | minimal flow + Docker install |
 | `web` | Небольшой web/app VPS | 1GB RAM, 15GB disk | minimal flow + Nginx/reverse proxy |
 | `ai-stack` | n8n/Supabase/Redis/pgvector stack | 4GB RAM, 50GB disk | Docker, secrets, compose stack, ready checks |
@@ -52,6 +52,8 @@ sudo bash scripts/99-ready-checks.sh --profile minimal
 ## Proxy/x-ui VPS
 
 Используйте для подготовки безопасной базы под proxy/VPN panel. Репозиторий не устанавливает x-ui/3x-ui автоматически.
+
+`5GB` свободного диска достаточно для baseline без установки панели. `10GB+` рекомендуется для самой panel, логов, обновлений и Docker-based вариантов.
 
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile proxy
