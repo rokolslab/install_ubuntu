@@ -2,13 +2,22 @@
 
 # Установка Docker и Docker Compose
 
-Это руководство описывает установку Docker Engine и Docker Compose на Ubuntu сервере.
+Это руководство описывает установку Docker Engine и Docker Compose на Ubuntu сервере для профилей `docker-host` и `ai-stack`.
+
+`scripts/03-install-docker.sh` жёстко требует `--profile docker-host` или `--profile ai-stack`. Для `minimal` и `proxy` Docker по умолчанию не нужен, и script завершится с ошибкой до изменения системы.
 
 ## Предварительные требования
 
 - Ubuntu 22.04 LTS или Ubuntu 24.04 LTS
 - Права root или sudo
 - Стабильное интернет-соединение
+- Успешный preflight для `docker-host` или `ai-stack`
+
+```bash
+sudo bash scripts/00-preflight-check.sh --profile docker-host
+# или
+sudo bash scripts/00-preflight-check.sh --profile ai-stack
+```
 
 ## Метод установки
 
@@ -16,18 +25,20 @@
 
 ## Шаг 1: Удаление старых версий Docker (если есть)
 
-Если на системе уже установлен Docker, рекомендуется удалить старые версии:
+Если на системе уже установлен Docker, script удаляет старые package variants через noninteractive `apt-get`:
 
 ```bash
-sudo apt remove -y docker docker-engine docker.io containerd runc
-sudo apt purge -y docker docker-engine docker.io containerd runc
+sudo apt-get remove -y docker docker-engine docker.io containerd runc
+sudo apt-get purge -y docker docker-engine docker.io containerd runc
 ```
+
+Также очищаются старые Docker apt sources из `/etc/apt/sources.list.d/` и старые keyring-файлы, чтобы `apt update` не падал из-за stale repository state.
 
 ## Шаг 2: Установка зависимостей
 
 ```bash
-sudo apt update
-sudo apt install -y \
+sudo apt-get update
+sudo apt-get install -y \
     ca-certificates \
     curl \
     gnupg \
@@ -38,23 +49,31 @@ sudo apt install -y \
 
 ```bash
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
 ```
 
 ## Шаг 4: Добавление репозитория Docker
 
 ```bash
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+ARCH="$(dpkg --print-architecture)"
+CODENAME="$(lsb_release -cs)"
+
+sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: ${CODENAME}
+Components: stable
+Architectures: ${ARCH}
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
 ```
 
 ## Шаг 5: Установка Docker Engine и Docker Compose
 
 ```bash
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
 ## Шаг 6: Настройка Docker для работы без sudo
@@ -210,15 +229,16 @@ newgrp docker
 
 **Решение:**
 ```bash
-# Очистите кэш apt
+# Очистите кэш apt и старые Docker sources
 sudo apt clean
-sudo apt update
+sudo rm -f /etc/apt/sources.list.d/docker*.list /etc/apt/sources.list.d/docker*.sources
+sudo rm -f /etc/apt/keyrings/docker.gpg /etc/apt/keyrings/docker.asc
 
-# Проверьте правильность ключа
-sudo apt-key list | grep Docker
-
-# Переустановите ключ
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+# Переустановите ключ и sources в формате, который использует script
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+sudo bash scripts/03-install-docker.sh --profile docker-host
 ```
 
 ## Обновление Docker
@@ -244,13 +264,15 @@ sudo rm -rf /etc/docker
 
 ## Автоматизация установки
 
-Для автоматической установки используйте скрипт:
+Для автоматической установки используйте script с явным профилем:
 
 ```bash
 sudo bash scripts/03-install-docker.sh --profile docker-host
+# или
+sudo bash scripts/03-install-docker.sh --profile ai-stack
 ```
 
-Для полного AI automation stack используйте `--profile ai-stack`. Docker не нужен для `minimal`/`proxy` по умолчанию.
+Без `--profile` script завершится с ошибкой. Для `minimal`/`proxy` script также завершится с ошибкой, чтобы не подтянуть Docker в лёгкие профили случайно.
 
 ## Полезные команды Docker
 

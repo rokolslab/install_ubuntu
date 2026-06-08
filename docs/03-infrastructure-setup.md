@@ -42,6 +42,12 @@
 
 ## Рекомендуемый порядок установки
 
+0. **Secrets** - обязательный `.env` для `ai-stack`
+   ```bash
+   sudo bash scripts/12-generate-secrets.sh --profile ai-stack
+   ```
+   См. [13-secrets.md](13-secrets.md) для подробностей.
+
 1. **Supabase** - базовая инфраструктура БД
    ```bash
    sudo bash scripts/04-setup-supabase.sh
@@ -68,13 +74,15 @@
 
 ## Объединённая установка
 
-Для быстрой установки всех компонентов используйте единый Docker Compose:
+Для быстрой установки всех компонентов используйте единый Docker Compose после генерации secrets:
 
 ```bash
 sudo bash scripts/12-generate-secrets.sh --profile ai-stack
 cd docker-compose
 docker compose --env-file .env up -d
 ```
+
+Не запускайте `scripts/12-generate-secrets.sh` для `minimal`, `proxy`, `docker-host` или `web`: эти профили не используют compose secrets.
 
 Для публичного доступа (опционально):
 ```bash

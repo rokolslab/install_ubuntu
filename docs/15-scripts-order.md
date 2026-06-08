@@ -11,15 +11,15 @@
 3. `scripts/02-security-baseline.sh --profile <profile>` — базовая безопасность сервера
 4. `scripts/02-secure-server.sh --profile <profile>` — compatibility wrapper для старого имени
 5. `scripts/03-install-docker.sh --profile docker-host|ai-stack` — установка Docker/Compose
-6. `scripts/04-setup-supabase.sh` — Supabase (PostgreSQL)
-7. `scripts/06-setup-redis.sh` — Redis
-8. `scripts/07-setup-vector-db.sh` — pgvector таблицы/индексы
-9. `scripts/05-setup-n8n.sh` — n8n (после Redis + DB)
-10. `scripts/08-setup-nginx.sh` — Nginx (опционально)
-11. `scripts/09-install-nvidia-drivers.sh` — NVIDIA (опционально)
-12. `scripts/10-backup-postgres.sh` — бэкап БД
-13. `scripts/11-setup-backup-cron.sh` — cron бэкапов
-14. `scripts/12-generate-secrets.sh --profile ai-stack` — генерация секретов (.env + config.toml)
+6. `scripts/12-generate-secrets.sh --profile ai-stack` — генерация секретов (.env + config.toml)
+7. `scripts/04-setup-supabase.sh` — Supabase (PostgreSQL)
+8. `scripts/06-setup-redis.sh` — Redis
+9. `scripts/07-setup-vector-db.sh` — pgvector таблицы/индексы
+10. `scripts/05-setup-n8n.sh` — n8n (после Redis + DB)
+11. `scripts/08-setup-nginx.sh` — Nginx (опционально)
+12. `scripts/09-install-nvidia-drivers.sh` — NVIDIA (опционально)
+13. `scripts/10-backup-postgres.sh` — бэкап БД
+14. `scripts/11-setup-backup-cron.sh` — cron бэкапов
 15. `scripts/99-ready-checks.sh --profile <profile>` — profile-aware ready‑проверки
 
 ## 2. Важно
@@ -81,11 +81,11 @@ sudo bash scripts/00-preflight-check.sh --profile ai-stack
 bash scripts/01-setup-ssh-keys.sh
 sudo bash scripts/02-security-baseline.sh --profile ai-stack
 sudo bash scripts/03-install-docker.sh --profile ai-stack
+sudo bash scripts/12-generate-secrets.sh --profile ai-stack
 sudo bash scripts/04-setup-supabase.sh
 sudo bash scripts/06-setup-redis.sh
 sudo bash scripts/07-setup-vector-db.sh
 sudo bash scripts/05-setup-n8n.sh
-sudo bash scripts/12-generate-secrets.sh --profile ai-stack
 sudo bash scripts/99-ready-checks.sh --profile ai-stack
 ```
 

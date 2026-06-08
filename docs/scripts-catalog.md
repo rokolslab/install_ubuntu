@@ -99,6 +99,8 @@ sudo bash ../scripts/99-ready-checks.sh --profile ai-stack
 
 `ai-stack` требует больше ресурсов. `4GB RAM / 50GB disk` относится именно к этому профилю, а не к minimal/proxy VPS.
 
+Если используете component scripts вместо единого `docker compose up -d`, всё равно сначала запустите `scripts/12-generate-secrets.sh --profile ai-stack`, чтобы `.env` и `supabase/config.toml` были синхронизированы до запуска сервисов.
+
 ## Firewall Rules
 
 `scripts/security/firewall.sh` сохраняет SSH port и применяет UFW default deny incoming. Порты `80/443` открываются только для `web`/`ai-stack` или через явный `--allow-port`.
