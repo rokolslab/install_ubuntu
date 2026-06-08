@@ -51,10 +51,12 @@ case "${PROFILE:-}" in
         log_info "Docker install разрешён для профиля: $PROFILE"
         ;;
     "")
-        log_warn "Профиль не указан; Docker install относится к docker-host или ai-stack"
+        log_error "Укажите --profile docker-host или --profile ai-stack"
+        exit 1
         ;;
     *)
-        log_warn "Профиль '$PROFILE' обычно не требует Docker; продолжайте только если Docker действительно нужен"
+        log_error "Профиль '$PROFILE' не должен запускать Docker install; используйте docker-host или ai-stack"
+        exit 1
         ;;
 esac
 
@@ -92,15 +94,15 @@ log_info "Старые источники Docker очищены"
 log_info "Шаг 1: Проверка и удаление старых версий Docker..."
 if command -v docker &> /dev/null; then
     log_warn "Обнаружен установленный Docker. Удаляем старые версии..."
-    apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
-    apt purge -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+    apt_noninteractive remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+    apt_noninteractive purge -y docker docker-engine docker.io containerd runc 2>/dev/null || true
 fi
 
 # Шаг 2: Установка зависимостей
 log_info "Шаг 2: Установка зависимостей..."
 # Обновляем список пакетов (временно отключаем set -e для игнорирования ошибок Docker репозитория)
 set +e
-apt update
+apt_noninteractive update
 APT_UPDATE_STATUS=$?
 set -euo pipefail
 
@@ -110,7 +112,7 @@ if [ $APT_UPDATE_STATUS -ne 0 ]; then
 fi
 
 # Устанавливаем зависимости (они есть в стандартных репозиториях Ubuntu)
-apt install -y \
+apt_noninteractive install -y \
     ca-certificates \
     curl \
     gnupg \
@@ -140,8 +142,8 @@ log_info "Репозиторий Docker добавлен"
 
 # Шаг 5: Установка Docker Engine и Docker Compose
 log_info "Шаг 5: Установка Docker Engine и Docker Compose..."
-apt update
-apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt_noninteractive update
+apt_noninteractive install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 log_info "Docker установлен успешно"
 

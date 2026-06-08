@@ -1,163 +1,176 @@
-# План: аудит и усиление `docs/ssh-keys.md`
+# План: комплексные проверки proxy VPS
 
-Дата создания: 2026-06-07
+Дата создания: 2026-06-08
 Режим: fast
 Ветка: текущая `main`
+Целевой сервер: SSH alias `vps-test-ai-test`
+Профиль: `proxy`
 
 ## Settings
 
-- Testing: docs checks включены.
-- Logging: не требуется runtime logging; для каждой задачи фиксировать проверочные заметки в итоговом diff/commit summary без вывода secrets.
-- Docs: mandatory docs checkpoint после реализации.
-- Scope: только документация по SSH-ключам и связанные cross-links, без изменения поведения scripts.
+- Testing: включены runtime checks на test VPS и локальные script checks.
+- Logging: сохранять краткие проверочные заметки в финальном summary; не выводить private keys, tokens, `.env` или чувствительные значения.
+- Docs: warn-only; обновлять docs только если проверки выявят расхождение команд/требований.
+- Scope: проверять только VPS profile flows, security scripts, readiness checks и безопасные negative paths; не устанавливать Docker/AI stack и не запускать production workloads.
+- Safety: основной flow read-only/idempotent; изменяющие проверки выполнять только в явно отмеченном opt-in phase.
 
 ## Цель
 
-Провести аудит и углубить `docs/ssh-keys.md`, чтобы документ был безопасным и понятным для пользователей Linux/macOS, Windows PowerShell/OpenSSH, Git Bash/WSL и PuTTY/Pageant. Документ должен снижать риск потери SSH-доступа перед hardening, объяснять различия между GitHub keys, VPS/root/admin keys, deploy keys и backup/rescue keys, показывать Windows-совместимые команды там, где текущие Unix-команды неприменимы, и покрывать сценарий переустановленного VPS со старыми SSH references на клиенте.
+Проверить на реальном маленьком Ubuntu 24.04 VPS всё, что разумно проверить для профиля `proxy`: доступ, ресурсы, preflight, idempotency security baseline, readiness, negative guards, reboot persistence, apt/dpkg health и безопасное поведение scripts при неподходящих профилях. Отдельно зафиксировать opt-in проверки, которые меняют firewall или состояние сервера.
 
-## Контекст аудита
+## Контекст
 
-- Текущий документ в основном Unix-oriented: `~/.ssh`, `chmod`, `cat`, `ssh-copy-id`, Bash snippets.
-- Windows-specific guidance отсутствует: PowerShell paths, Windows OpenSSH, `ssh-agent` service, ACL permissions, Git Bash caveats, PuTTY/Pageant.
-- Важная связь с hardening недообъяснена: `scripts/security/ssh-hardening.sh` безопасно отключает root/password login только при проверенном non-root key access.
-- `scripts/01-setup-ssh-keys.sh` Bash-oriented; это нужно явно указать для Windows-клиентов.
-- Пользователю нужно явно объяснить смысл составных частей имени ключа: `purpose`, `account-or-server`, `user/role`, `device`.
-- Частый operational case: VPS переустановлен, host key изменился, в `known_hosts`/SSH config остались старые записи, а пользователь создал новый client key.
+- VPS уже доступен по `ssh vps-test-ai-test` под пользователем `ai-test`.
+- `sudo -n` работает без пароля.
+- Сервер малый: около 1GB RAM, около 5GB free disk после baseline, swap около 500MB.
+- Профиль `proxy` не должен требовать Docker, compose или `.env`.
+- `proxy` service ports не открываются автоматически; они должны открываться только через явный `--allow-port <port>`.
+- Уже найден и исправлен bug: security apt operations должны быть noninteractive, иначе `apt upgrade -y` может зависнуть на conffile/needrestart flow.
 
 ## Tasks
 
-### Phase 1: Audit Structure And Safety Gaps
+### Phase 1: Local And Remote Baseline Checks
 
-1. [x] Зафиксировать целевую структуру `docs/ssh-keys.md` перед правкой.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: обновлённый порядок разделов: overview, platform matrix, naming/comment standards, Linux/macOS, Windows OpenSSH/PowerShell, Git Bash/WSL, PuTTY/Pageant, GitHub, VPS/root/admin, deploy, backup/rescue, reinstall/recovery scenarios, pre-hardening checklist, troubleshooting, forbidden actions.
-   - Expected behavior: документ остаётся self-contained и не превращает README в manual.
-   - Logging/reporting: в итоговом summary отметить, какие разделы были переставлены или добавлены; secrets не выводить.
-   - Dependencies: нет.
+1. [x] Проверить локальное состояние репозитория перед VPS тестами.
+   - Files: none; commands only.
+   - Commands: `git status -sb`, `git log --oneline -5`, `bash scripts/98-verify-scripts.sh`, `git diff --check`.
+   - Expected behavior: local scripts pass syntax/ShellCheck where available; no secrets in diff; untracked `.opencode/` and `.ai-factory.json` remain untouched.
+   - Logging/reporting: summary должен указать branch/ahead status и локальные checks без вывода private key paths beyond alias-level context.
+   - Dependencies: none.
 
-2. [x] Углубить объяснение составных частей имени SSH-ключа.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: добавить понятное пояснение формата имени, например `<purpose>_<target>_<role-or-user>_<device>` или текущего короткого `<purpose>_<account-or-server>_<device>`, с расшифровкой `purpose`, `account-or-server/target`, `role/user`, `device`; показать хорошие и плохие примеры.
-   - Expected behavior: пользователь понимает, что имя ключа отвечает на вопросы “для чего?”, “куда/к какому аккаунту?”, “какая роль?”, “с какого устройства?”, и может безопасно найти ключи для ротации после потери устройства или смены VPS.
-   - Logging/reporting: в summary отметить добавленную naming rationale; не использовать реальные email, IP или private key material.
+2. [x] Проверить SSH, sudo и базовую диагностику VPS.
+   - Files: none; remote commands only.
+   - Commands: `ssh vps-test-ai-test 'whoami && sudo -n whoami && uptime'`, OS/resources/disk/swap checks, `sudo -n apt-get check`, `sudo -n dpkg --audit`.
+   - Expected behavior: `whoami=ai-test`, sudo returns `root`, package manager healthy, resources соответствуют proxy constraints.
+   - Logging/reporting: фиксировать только агрегированные ресурсы и package health; не выводить IP в финальном summary без необходимости.
    - Dependencies: Task 1.
 
-3. [x] Усилить safety model для private/public keys.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: добавить объяснение, где генерируется private key, куда копируется только `.pub`, как отличать private/public key, почему нельзя хранить private key на VPS/GitHub/в репозитории.
-   - Expected behavior: пользователь понимает, что команды чтения/копирования должны использовать только `.pub`, кроме локального использования private key в `ssh -i`.
-   - Logging/reporting: в summary отметить добавленные safety warnings; реальные ключи или fingerprint values не приводить.
+3. [x] Обновить clean test copy на VPS из tracked files.
+   - Files: remote `/home/ai-test/install_ubuntu-test-*` copy only.
+   - Commands: use `git ls-files -z | tar --null -T - -czf - | ssh ... tar -xzf - -C <remote-dir>`.
+   - Expected behavior: на VPS попадают только tracked files; local untracked `.opencode/` и `.ai-factory.json` не копируются.
+   - Logging/reporting: указать remote test directory, но не публиковать secrets.
    - Dependencies: Task 1.
 
-### Phase 2: Add Windows Client Coverage
+### Phase 2: Read-Only And Non-Mutating Script Checks
 
-4. [x] Добавить раздел Windows OpenSSH и PowerShell.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: команды для `ssh-keygen`, просмотра `.pub` через `Get-Content`, подключения через `ssh -i`, путь `$env:USERPROFILE\.ssh`, config path `C:\Users\<User>\.ssh\config`.
-   - Expected behavior: Windows-пользователь может выполнить базовый GitHub/VPS flow без Git Bash и без Unix-only команд.
-   - Logging/reporting: в summary перечислить Windows commands, которые были добавлены; не выводить private key contents.
-   - Dependencies: Task 1.
-
-5. [x] Добавить Windows `ssh-agent` и permissions/ACL guidance.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: команды `Get-Service ssh-agent`, `Set-Service ssh-agent -StartupType Automatic`, `Start-Service ssh-agent`, `ssh-add`, `ssh-add -l`; предупреждение про `UNPROTECTED PRIVATE KEY FILE` и ограничение доступа к private key текущим пользователем.
-   - Expected behavior: документ объясняет, почему Unix `chmod` не равен Windows ACL и что делать при ошибках permissions.
-   - Logging/reporting: в summary отметить, что ACL guidance добавлен как безопасная рекомендация без агрессивных destructive команд.
-   - Dependencies: Task 4.
-
-6. [x] Добавить альтернативы `ssh-copy-id` для Windows.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: объяснить, что `ssh-copy-id` обычно отсутствует в native PowerShell; дать безопасный вариант ручного добавления `.pub` в `authorized_keys` и PowerShell pipeline/SSH fallback, если подходит.
-   - Expected behavior: Windows-пользователь может добавить публичный ключ на VPS без установки дополнительных Unix tools.
-   - Logging/reporting: в summary отметить выбранный способ и предупреждение о duplicate keys/ownership.
-   - Dependencies: Task 4.
-
-7. [x] Добавить Git Bash, WSL и PuTTY/Pageant notes.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: коротко описать, когда использовать Git Bash/WSL, что `~/.ssh` в Git Bash мапится на Windows home, что PuTTY использует `.ppk`, PuTTYgen/Pageant применимы для PuTTY/Plink workflows, а Git for Windows обычно проще с OpenSSH keys.
-   - Expected behavior: документ помогает выбрать инструмент, не смешивая incompatible key formats.
-   - Logging/reporting: в summary отметить ограничения Git Bash/WSL/PuTTY; не рекомендовать конвертацию private key без passphrase.
-   - Dependencies: Task 4.
-
-### Phase 3: Strengthen Server, GitHub And Recovery Flows
-
-8. [x] Углубить GitHub key and alias flow для разных платформ.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: сохранить canonical `RokolsLab` examples, добавить проверку `ssh -T git@github.com` / alias из PowerShell и Git Bash, объяснить `Host github-rokolslab` и `git remote set-url`.
-   - Expected behavior: пользователь понимает разницу между GitHub account SSH key и repository deploy key.
-   - Logging/reporting: в summary отметить alias/remote examples; не использовать реальные email/token values.
-   - Dependencies: Tasks 4, 7.
-
-9. [x] Добавить полноценный VPS/root/admin pre-hardening flow.
-   - Files: `docs/ssh-keys.md`, возможно cross-link на `docs/01-server-security.md` и `docs/01-server-security-hardening.md`.
-   - Deliverable: пошагово описать root key, создание non-root admin/deploy user, добавление public key, проверку второго SSH-сеанса, проверку `sudo`, сохранение текущей сессии открытой перед hardening.
-   - Expected behavior: пользователь не запускает SSH hardening, пока не проверил non-root key access и recovery path.
-   - Logging/reporting: в summary отметить added lockout-prevention checklist; не включать реальные server IP.
+4. [x] Запустить verifier на VPS copy.
+   - Files: scripts only; no modifications expected.
+   - Commands: `bash scripts/98-verify-scripts.sh` on VPS copy.
+   - Expected behavior: `bash -n` passes for all first-party scripts; ShellCheck may be skipped if not installed on VPS.
+   - Logging/reporting: distinguish pass from skipped ShellCheck warning.
    - Dependencies: Task 3.
 
-10. [x] Добавить сценарий “VPS переустановлен или пересоздан”.
-    - Files: `docs/ssh-keys.md`.
-    - Deliverable: объяснить разницу между старым client private key, новым client key и server host key; описать, что после переустановки VPS часто нужно удалить старый host key из `known_hosts`, обновить SSH config aliases при смене IP/user/key path, заново добавить новый `.pub` в `authorized_keys`, и удалить/закомментировать ссылки на старый private key.
-    - Expected behavior: пользователь понимает, что warning `REMOTE HOST IDENTIFICATION HAS CHANGED` нельзя игнорировать вслепую; сначала надо подтвердить, что VPS действительно переустановлен/пересоздан, затем очистить старую запись и проверить новый fingerprint.
-    - Linux/macOS/Git Bash commands: включить `ssh-keygen -R SERVER_IP`, `ssh-keygen -R '[SERVER_IP]:PORT'`, проверку/редактирование `~/.ssh/config`, пример замены `IdentityFile ~/.ssh/old_key` на новый key path, подключение `ssh -i ~/.ssh/new_key user@SERVER_IP`.
-    - Windows PowerShell commands: включить `ssh-keygen -R SERVER_IP`, `ssh-keygen -R '[SERVER_IP]:PORT'`, путь `$env:USERPROFILE\.ssh\known_hosts`, редактирование `$env:USERPROFILE\.ssh\config`, подключение `ssh -i "$env:USERPROFILE\.ssh\new_key" user@SERVER_IP`.
-    - Logging/reporting: в summary отметить добавленный reinstall recovery flow; не включать реальные IP, fingerprints или private key contents.
-    - Dependencies: Tasks 4, 6, 9.
+5. [x] Проверить preflight classification для всех relevant profiles.
+   - Files: `scripts/00-preflight-check.sh` behavior only.
+   - Commands: `sudo -n bash scripts/00-preflight-check.sh`, `--profile minimal`, `--profile proxy`, `--profile docker-host`, `--profile web`, `--profile ai-stack`.
+   - Expected behavior: `minimal` and `proxy` are OK/WARN as appropriate; heavier profiles are NO on this VPS; Docker/.env warnings are non-blocking for minimal/proxy.
+   - Logging/reporting: summary должен отметить exact profile states and resource thresholds.
+   - Dependencies: Task 4.
 
-11. [x] Уточнить deploy и backup/rescue key policy.
-    - Files: `docs/ssh-keys.md`.
-    - Deliverable: описать ограничения deploy keys, когда допустима empty passphrase, где хранить backup/rescue key, как ротировать и удалять скомпрометированные keys из GitHub/VPS.
-    - Expected behavior: пользователь отделяет human admin access от automation/deploy access.
-    - Logging/reporting: в summary отметить policy changes; не добавлять реальные secrets or credentials.
-    - Dependencies: Task 3.
+6. [x] Проверить safe negative guards for wrong profiles.
+   - Files: scripts behavior only; no lasting state expected.
+   - Commands: `sudo -n bash scripts/03-install-docker.sh --profile minimal`, `sudo -n bash scripts/12-generate-secrets.sh --profile proxy`, selected `--help` commands.
+   - Expected behavior: scripts refuse unsupported profiles with clear error messages and do not install Docker or generate `.env`.
+   - Logging/reporting: capture exit category and key error text, not full noisy logs unless needed.
+   - Dependencies: Task 5.
 
-### Phase 4: Troubleshooting And Verification
+7. [x] Запустить readiness checks for `minimal` and `proxy`.
+   - Files: `scripts/99-ready-checks.sh` behavior only.
+   - Commands: `sudo -n bash scripts/99-ready-checks.sh --profile minimal`, `sudo -n bash scripts/99-ready-checks.sh --profile proxy`.
+   - Expected behavior: checks pass; UFW active, SSH config valid, fail2ban active, unattended-upgrades active, RAM/swap acceptable.
+   - Logging/reporting: summary должен отметить warnings like manual proxy service ports.
+   - Dependencies: Task 5.
 
-12. [x] Расширить troubleshooting для Windows/Linux/macOS.
-    - Files: `docs/ssh-keys.md`.
-    - Deliverable: добавить симптомы и проверки: `Permission denied (publickey)`, wrong key selected, bad permissions/ACL, agent has no identities, GitHub alias mismatch, changed SSH port, UFW/fail2ban implications, stale `known_hosts` after VPS reinstall, stale `IdentityFile` in SSH config.
-    - Expected behavior: пользователь получает route-to-fix без небезопасных советов вроде копирования private key на сервер или бездумного удаления host key без проверки причины.
-    - Logging/reporting: в summary перечислить troubleshooting categories; не предлагать выводить private key.
-    - Dependencies: Tasks 5, 6, 9, 10.
+8. [x] Запустить read-only security audit.
+   - Files: `scripts/security/audit.sh` behavior only.
+   - Commands: `sudo -n bash scripts/security/audit.sh`.
+   - Expected behavior: only SSH is publicly listening/open via UFW unless opt-in firewall tests were run; effective SSH config shows hardened values.
+   - Logging/reporting: summarize open ports, UFW default policy, fail2ban jail count, SSH effective config.
+   - Dependencies: Task 7.
 
-13. [x] Проверить cross-links и согласованность с project scripts.
-    - Files: `docs/ssh-keys.md`, `docs/01-server-security.md`, `docs/01-server-security-hardening.md`, `docs/scripts-catalog.md` если понадобятся ссылки.
-    - Deliverable: ссылки на relevant docs/scripts работают; документ честно говорит, что `scripts/01-setup-ssh-keys.sh` Bash-oriented и лучше подходит для Linux/macOS/WSL/Git Bash, не native PowerShell.
-    - Expected behavior: документация не обещает Windows support в Bash script, если его нет в коде.
-    - Logging/reporting: в summary отметить changed/added cross-links; никаких secrets.
-    - Dependencies: Tasks 4-12.
+### Phase 3: Idempotency Checks That May Touch Config But Should Preserve Access
 
-14. [x] Провести mandatory docs checkpoint.
-    - Files: `docs/ssh-keys.md` и любые затронутые docs.
-    - Deliverable: финальная проверка readability, technical accuracy, internal links, canonical `RokolsLab` references, отсутствие secrets, отсутствие устаревших команд.
-    - Expected behavior: `git diff --check` проходит; targeted grep не находит старые owner spellings или private-key anti-patterns.
-    - Logging/reporting: в финальном ответе дать компактную таблицу проверок и residual risks.
-    - Dependencies: Tasks 1-13.
+9. [x] Повторно запустить idempotent `proxy` security baseline.
+   - Files: remote system config; no repo changes expected.
+   - Commands: `sudo -n bash scripts/02-security-baseline.sh --profile proxy`.
+   - Expected behavior: completes without interactive apt prompts, preserves SSH access, does not open proxy service ports automatically, leaves package manager healthy.
+   - Logging/reporting: note apt noninteractive behavior, UFW preserved SSH, SSH hardening backup creation, fail2ban restart.
+   - Dependencies: Task 8.
+
+10. [x] Проверить отдельные security modules idempotently.
+    - Files: remote system config; no repo changes expected.
+    - Commands: `firewall.sh --profile proxy`, `ssh-hardening.sh`, `fail2ban.sh`, `unattended-upgrades.sh`, `sysctl-hardening.sh`.
+    - Expected behavior: each module reruns cleanly, keeps SSH reachable, no Docker/compose dependency appears.
+    - Logging/reporting: run one module at a time and verify SSH after SSH/firewall modules.
+    - Dependencies: Task 9.
+
+11. [x] Проверить deprecated compatibility wrapper.
+    - Files: remote system config; no repo changes expected.
+    - Commands: `sudo -n bash scripts/02-secure-server.sh --profile proxy`.
+    - Expected behavior: wrapper routes to current security baseline or reports deprecation clearly; final state remains equivalent to `02-security-baseline.sh`.
+    - Logging/reporting: note wrapper behavior and any deprecation warning.
+    - Dependencies: Task 9.
+
+12. [x] Проверить reboot persistence после idempotency checks.
+    - Files: remote system state only.
+    - Commands: check `/var/run/reboot-required`; if reboot required, ask user before reboot; after reboot verify SSH, UFW, fail2ban, unattended-upgrades, ready checks.
+    - Expected behavior: after reboot, SSH key access works, password/root login stay disabled, UFW/fail2ban persist.
+    - Logging/reporting: do not reboot without explicit confirmation; include downtime/SSH wait result if reboot happens.
+    - Dependencies: Tasks 9-11.
+
+### Phase 4: Opt-In Mutating Checks
+
+13. [x] Opt-in: проверить explicit proxy service port allow/remove.
+    - Files: remote firewall state only.
+    - Commands: run `sudo -n bash scripts/security/firewall.sh --profile proxy --allow-port 12345/tcp`, verify UFW rule, then remove the test rule manually and verify it is gone.
+    - Expected behavior: proxy opens only explicitly requested port; cleanup removes test port; SSH stays limited/open.
+    - Logging/reporting: execute only after user confirms; summary must mention rule cleanup status.
+    - Dependencies: Task 8.
+
+14. [x] Opt-in: проверить swap module skip/create behavior.
+    - Files: remote swap state only.
+    - Commands: inspect current swap; run `scripts/security/swap.sh` only if user approves changing swap.
+    - Expected behavior: existing swap is detected and not destructively recreated unless explicit force flag is used.
+    - Logging/reporting: no force-recreate without explicit approval.
+    - Dependencies: Task 2.
+
+15. Opt-in: cleanup test access and remote test directory. (Skipped: access retained by user choice.)
+    - Files: remote `/home/ai-test/install_ubuntu-test-*`, `/etc/sudoers.d/90-ai-test`, user `ai-test`.
+    - Commands: remove only after user confirms tests are complete and no more access is needed.
+    - Expected behavior: test artifacts/access removed safely; no production user/data touched.
+    - Logging/reporting: provide exact cleanup commands before execution.
+    - Dependencies: all selected test tasks.
 
 ## Acceptance Criteria
 
-- `docs/ssh-keys.md` содержит отдельные Windows OpenSSH/PowerShell instructions.
-- Документ объясняет Git Bash/WSL/PuTTY/Pageant tradeoffs без смешивания key formats.
-- Есть безопасные альтернативы `ssh-copy-id` для Windows.
-- Есть объяснение составных частей имени ключа и практическая причина каждой части.
-- Есть сценарий “VPS переустановлен/пересоздан”: очистка stale `known_hosts`, обновление SSH config/`IdentityFile`, добавление нового `.pub` на сервер, команды для Linux/macOS/Git Bash и Windows PowerShell.
-- Есть pre-hardening checklist с non-root key access, второй SSH-сессией и `sudo` verification.
-- GitHub aliases и repository URLs используют canonical `RokolsLab` / `github-rokolslab`.
-- Документ не выводит и не просит вставлять private key contents.
-- Документ предупреждает не игнорировать `REMOTE HOST IDENTIFICATION HAS CHANGED` без подтверждения переустановки/смены host key.
-- После реализации проходит `git diff --check` и targeted grep по stale owner spellings.
+- Local `scripts/98-verify-scripts.sh` passes.
+- VPS verifier passes or only warns that ShellCheck is absent.
+- `00-preflight-check.sh --profile proxy` returns `OK` on this VPS with current relaxed disk minimum.
+- `minimal` and `proxy` readiness checks pass.
+- Heavier profiles are refused or classified `NO` without installing Docker/compose.
+- Security baseline is idempotent and noninteractive.
+- SSH remains reachable after firewall/SSH hardening and optional reboot.
+- UFW opens SSH only by default for `proxy`; proxy service ports require explicit `--allow-port`.
+- `fail2ban` and `unattended-upgrades` are active.
+- Package manager health is clean: `apt-get check` passes and `dpkg --audit` has no actionable errors.
+- No secrets/private keys/`.env` values are printed or copied into artifacts.
 
 ## Commit Plan
 
-1. `docs(ssh): explain key naming and Windows setup`
-   - Tasks 1-7.
-2. `docs(ssh): strengthen vps recovery and hardening flows`
-   - Tasks 8-14.
+1. `test(vps): validate proxy profile checks`
+   - Tasks 1-8.
+2. `test(vps): verify proxy hardening idempotency`
+   - Tasks 9-12.
+3. `test(vps): document opt-in mutating checks`
+   - Tasks 13-15 if executed or if docs/scripts need updates from findings.
 
 ## Next Step
 
-Для реализации выполнить:
+Для выполнения безопасной части плана:
 
 ```text
 /aif-implement
 ```
+
+Перед opt-in задачами 13-15 требуется отдельное подтверждение пользователя.
