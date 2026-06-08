@@ -33,6 +33,15 @@ require_root() {
   fi
 }
 
+apt_noninteractive() {
+  DEBIAN_FRONTEND=noninteractive \
+  NEEDRESTART_MODE=a \
+  apt-get \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold \
+    "$@"
+}
+
 detect_os() {
   OS_NAME="unknown"
   OS_VERSION="unknown"

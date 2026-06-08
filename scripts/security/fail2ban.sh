@@ -15,7 +15,7 @@ trap 'log_error "Ошибка на строке $LINENO: $BASH_COMMAND"' ERR
 require_root
 
 log_info "Старт fail2ban setup"
-apt install -y fail2ban
+apt_noninteractive install -y fail2ban
 
 if [ -f /etc/fail2ban/jail.local ]; then
   cp /etc/fail2ban/jail.local "/etc/fail2ban/jail.local.backup.$(date +%Y%m%d_%H%M%S)"

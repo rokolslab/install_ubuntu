@@ -89,7 +89,7 @@ main() {
 
   log_info "Старт firewall hardening"
   if ! command -v ufw &> /dev/null; then
-    apt install -y ufw
+    apt_noninteractive install -y ufw
   fi
 
   ufw default deny incoming

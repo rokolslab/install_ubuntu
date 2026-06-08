@@ -15,7 +15,7 @@ trap 'log_error "Ошибка на строке $LINENO: $BASH_COMMAND"' ERR
 require_root
 
 log_info "Старт unattended-upgrades setup"
-apt install -y unattended-upgrades
+apt_noninteractive install -y unattended-upgrades
 
 cat > /etc/apt/apt.conf.d/50unattended-upgrades <<'EOF'
 Unattended-Upgrade::Automatic-Reboot "false";

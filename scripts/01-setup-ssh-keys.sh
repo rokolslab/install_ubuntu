@@ -13,23 +13,23 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 log_info() {
-  echo -e "${GREEN}[INFO]${NC} $1"
+  echo -e "${GREEN}[INFO]${NC} $1" >&2
 }
 
 log_warn() {
-  echo -e "${YELLOW}[WARN]${NC} $1"
+  echo -e "${YELLOW}[WARN]${NC} $1" >&2
 }
 
 log_error() {
-  echo -e "${RED}[ERROR]${NC} $1"
+  echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 log_question() {
-  echo -e "${CYAN}[?]${NC} $1"
+  echo -e "${CYAN}[?]${NC} $1" >&2
 }
 
 log_step() {
-  echo -e "\n${BLUE}=== $1 ===${NC}\n"
+  echo -e "\n${BLUE}=== $1 ===${NC}\n" >&2
 }
 
 ask_yes_no() {
@@ -499,12 +499,12 @@ main() {
   log_info "Скрипт выполняется на клиентской машине: $(whoami)@$(hostname)"
   warn_private_key_safety
 
-  echo "Выберите сценарий:"
-  echo "  1) GitHub key"
-  echo "  2) VPS/root key"
-  echo "  3) Deploy user key"
-  echo "  4) Backup/rescue key"
-  echo "  5) Existing key"
+  echo "Выберите сценарий:" >&2
+  echo "  1) GitHub key" >&2
+  echo "  2) VPS/root key" >&2
+  echo "  3) Deploy user key" >&2
+  echo "  4) Backup/rescue key" >&2
+  echo "  5) Existing key" >&2
   choice="$(ask_choice "Сценарий" "5" "2")"
 
   case "$choice" in

@@ -15,7 +15,7 @@ trap 'log_error "Ошибка на строке $LINENO: $BASH_COMMAND"' ERR
 require_root
 
 log_info "Старт system updates"
-apt update
-apt upgrade -y
-apt autoremove -y
+apt_noninteractive update
+apt_noninteractive upgrade -y
+apt_noninteractive autoremove -y
 log_info "System updates завершены"
