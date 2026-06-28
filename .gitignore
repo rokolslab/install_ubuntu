@@ -1,0 +1,23 @@
+# Local environment and generated secrets
+.env
+docker-compose/.env
+*.env.local
+*.secret
+*.secrets
+secrets.*
+*.key
+*.pem
+
+# Backups and logs
+backups/
+logs/
+*.log
+
+# Local temporary artifacts
+tmp/
+.tmp/
+*.tmp
+*.swp
+*.swo
+*~
+.DS_Store
