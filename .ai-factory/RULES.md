@@ -1,0 +1,21 @@
+# Project Rules
+
+- No scope creep: implement only the approved PR goal.
+- One PR solves one bounded problem.
+- Prefer small, reviewable changes over broad rewrites.
+- Do read-only review before implementation for non-trivial, security-sensitive, or risky changes.
+- Implement only after human approval when scope affects governance, security, install flows, public access, CI, changelog, or version policy.
+- Do not run privileged commands unless explicitly requested.
+- Do not use sudo unless explicitly requested.
+- Do not run install scripts during planning or review.
+- Do not start containers during planning or review unless explicitly requested.
+- Do not commit secrets or generated secret files.
+- Do not write generated secrets into tracked config files.
+- Do not use `latest` Compose image tags.
+- Do not exact-pin apt packages by default.
+- Ubuntu 24.04 LTS is the primary and priority baseline.
+- Ubuntu 26.04 LTS is the compatibility and validation target.
+- README.md stays short; detailed guidance belongs in docs/.
+- Beginner-facing docs must stay clear and avoid unnecessary jargon.
+- Risky system changes must include verification and rollback notes.
+- Do not broaden into Supabase scope, public Compose override, CI, changelog, version enforcement, or smoke-test evidence unless that is the approved PR goal.
