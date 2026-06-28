@@ -91,6 +91,9 @@ For the full installation path, use [QUICKSTART.md](QUICKSTART.md). To understan
 | Guide | Description |
 |-------|-------------|
 | [Quick Start](QUICKSTART.md) | End-to-end installation path |
+| [Project Requirements](docs/project-requirements.md) | Scope, baseline and change-control rules |
+| [Version Policy](docs/version-policy.md) | Ubuntu packages, Docker and Compose image version rules |
+| [Acceptance Criteria](docs/acceptance-criteria.md) | Profile-level readiness expectations |
 | [System Requirements](requirements/system-requirements.md) | CPU, RAM, disk and OS requirements |
 | [VPS Profiles](docs/profiles.md) | Minimal, proxy, docker-host, web and ai-stack profiles |
 | [Server Security](docs/01-server-security.md) | SSH, UFW, fail2ban and hardening |
