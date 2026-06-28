@@ -8,6 +8,10 @@ secrets.*
 *.key
 *.pem
 
+# Local AI tool state
+.ai-factory.json
+.opencode/
+
 # Backups and logs
 backups/
 logs/
