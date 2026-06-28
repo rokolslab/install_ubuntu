@@ -11,6 +11,21 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 - Record quality gates that still require manual validation.
 - Avoid duplicating step-by-step installation docs.
 
+## Current PR-Sized Roadmap
+
+| Phase | Status | Notes |
+|---|---|---|
+| Secrets safety PR | ✅ Completed | Committed as `89ab2bb fix: harden generated secrets handling`. |
+| Project governance baseline | 🔄 Current | Add requirements, version policy, acceptance criteria, and roadmap links. |
+| Ubuntu 26.04 compatibility validation | ⏳ Planned | Validate packages, scripts, Docker, Compose and profile ready checks before compatibility claims. |
+| Supabase scope clarity | ⏳ Planned | Decide whether the project supports full Supabase or only PostgreSQL plus selected Supabase-related components. |
+| Public Compose override correctness | ⏳ Planned | Review direct public Compose override as advanced explicit mode, not default public access. |
+| Version policy enforcement | ⏳ Planned | Align package/image handling with `docs/version-policy.md`. |
+| CI/quality gates | ⏳ Planned | Add automated syntax, lint and documentation checks in a separate PR. |
+| Clean Ubuntu 24.04 VM smoke-test evidence | ⏳ Planned | Capture clean VM evidence for supported profile flows before release readiness claims. |
+| Changelog/release readiness | ⏳ Planned | Decide changelog/release notes format and update process. |
+| ai-factory rules proposal/review | ⏳ Planned | Review project rules separately; do not track `.ai-factory.json` or `.opencode/` without explicit approval. |
+
 ---
 
 # План приведения проекта к лучшим практикам
