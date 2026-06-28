@@ -9,16 +9,15 @@
 cd docker-compose
 cp env.example .env
 nano .env
-```
-
-Ограничьте доступ:
-```bash
 chmod 600 .env
 ```
 
+`docker-compose/.env` является локальным runtime-файлом и игнорируется git. Не добавляйте его в commit.
+
 Рекомендации:
-- Не коммитьте `.env` в git.
-- Храните резервную копию секретов в менеджере паролей.
+- Не коммитьте `.env` или другие generated secret files в git.
+- Храните резервную копию секретов в password manager.
+- Не записывайте сгенерированные secrets в tracked config files, включая `docker-compose/supabase/config.toml`.
 
 ## 2. Генерация секретов
 ```bash
@@ -29,6 +28,8 @@ openssl rand -base64 24 | tr -d "=+/" | cut -c1-32
 ```bash
 sudo bash scripts/12-generate-secrets.sh --profile ai-stack
 ```
+
+`scripts/12-generate-secrets.sh` — канонический генератор secrets для compose stack. Скрипт создаёт или обновляет только локальный `docker-compose/.env`, выставляет права `600` и не пишет реальные secrets в tracked config files.
 
 Скрипт предназначен только для `ai-stack`. Для `minimal`, `proxy`, `docker-host` и `web` файл `docker-compose/.env` не требуется.
 

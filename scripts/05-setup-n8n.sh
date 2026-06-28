@@ -24,11 +24,6 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Функция генерации безопасного пароля
-generate_password() {
-    openssl rand -base64 24 | tr -d "=+/" | cut -c1-32
-}
-
 # Проверка Docker
 if ! command -v docker &> /dev/null; then
     log_error "Docker не установлен. Установите Docker сначала."
@@ -58,51 +53,17 @@ cd "$COMPOSE_DIR"
 # Проверяем наличие .env файла
 if [ ! -f ".env" ]; then
     log_error "Файл .env не найден в $COMPOSE_DIR"
-    log_error "Сначала запустите скрипт установки Supabase (04-setup-supabase.sh)"
-    log_error "Он создаст .env файл с необходимыми паролями"
+    log_error "Сначала создайте secrets через: sudo bash scripts/12-generate-secrets.sh --profile ai-stack"
     exit 1
 fi
 
-# Проверяем, что переменные n8n есть в .env
-if ! grep -q "^N8N_BASIC_AUTH_PASSWORD=" .env 2>/dev/null; then
-    log_warn "Переменная N8N_BASIC_AUTH_PASSWORD не найдена в .env"
-    log_info "Добавляем переменные для n8n в .env..."
-    
-    # Генерируем пароль для n8n
-    N8N_PASSWORD=$(generate_password)
-    N8N_ENCRYPTION_KEY=$(generate_password)
-    N8N_USER_MANAGEMENT_JWT_SECRET=$(generate_password)
-    
-    # Добавляем переменные для n8n в .env
-    cat >> .env <<EOF
-
-# n8n
-N8N_BASIC_AUTH_ACTIVE=true
-N8N_BASIC_AUTH_USER=admin
-N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
-N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
-N8N_WEBHOOK_URL=http://localhost:5678/
-N8N_METRICS=true
-N8N_LOG_LEVEL=info
-N8N_WORKERS_COUNT=2
-EOF
-    
-    log_info "Переменные для n8n добавлены в .env"
-fi
-
-# Добавляем ключи, если отсутствуют
-if ! grep -q "^N8N_ENCRYPTION_KEY=" .env 2>/dev/null; then
-    N8N_ENCRYPTION_KEY=$(generate_password)
-    echo "N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}" >> .env
-    log_info "Добавлен N8N_ENCRYPTION_KEY в .env"
-fi
-
-if ! grep -q "^N8N_USER_MANAGEMENT_JWT_SECRET=" .env 2>/dev/null; then
-    N8N_USER_MANAGEMENT_JWT_SECRET=$(generate_password)
-    echo "N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}" >> .env
-    log_info "Добавлен N8N_USER_MANAGEMENT_JWT_SECRET в .env"
-fi
+for required_secret in N8N_BASIC_AUTH_PASSWORD N8N_ENCRYPTION_KEY N8N_USER_MANAGEMENT_JWT_SECRET; do
+    if ! grep -q "^${required_secret}=" .env 2>/dev/null; then
+        log_error "Переменная $required_secret не найдена в .env"
+        log_error "Обновите secrets через: sudo bash scripts/12-generate-secrets.sh --profile ai-stack"
+        exit 1
+    fi
+done
 
 # Проверяем, что Redis и Supabase запущены
 if ! docker ps --format "{{.Names}}" | grep -q "^redis$"; then
@@ -166,7 +127,7 @@ echo ""
 log_info "n8n доступен по адресу: http://localhost:5678"
 log_info "Логин: admin"
 log_info "Пароль: см. в файле .env (N8N_BASIC_AUTH_PASSWORD)"
-log_info "Для просмотра пароля: grep N8N_BASIC_AUTH_PASSWORD $COMPOSE_DIR/.env"
+log_warn "Не выводите secrets в терминал; храните копию в password manager"
 echo ""
 
 log_info "Установка n8n завершена!"

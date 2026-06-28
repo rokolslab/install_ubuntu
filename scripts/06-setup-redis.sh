@@ -52,57 +52,18 @@ cd "$COMPOSE_DIR"
 
 # Проверяем наличие .env файла
 if [ ! -f ".env" ]; then
-    log_info "Файл .env не найден. Создаём с автоматически сгенерированным паролем..."
-    if [ -f "env.example" ]; then
-        # Функция генерации безопасного пароля
-        generate_password() {
-            openssl rand -base64 24 | tr -d "=+/" | cut -c1-32
-        }
-        
-        # Генерируем пароли
-        REDIS_PASSWORD=$(generate_password)
-        SUPABASE_PASSWORD=$(generate_password)
-        N8N_PASSWORD=$(generate_password)
-        
-        # Создаём .env файл с сгенерированными паролями
-        sed -e "s/your-secure-redis-password-here/${REDIS_PASSWORD}/" \
-            -e "s/your-secure-supabase-password-here/${SUPABASE_PASSWORD}/" \
-            -e "s/your-secure-n8n-password-here/${N8N_PASSWORD}/" \
-            env.example > .env
-        
-        log_info "Файл .env создан с автоматически сгенерированными паролями"
-    else
-        log_error "Файл env.example не найден!"
-        exit 1
-    fi
+    log_error "Файл .env не найден в $COMPOSE_DIR"
+    log_error "Сначала создайте secrets через: sudo bash scripts/12-generate-secrets.sh --profile ai-stack"
+    exit 1
 else
     log_info "Файл .env уже существует"
 fi
 
 # Проверяем, что переменная REDIS_PASSWORD есть в .env
 if ! grep -q "^REDIS_PASSWORD=" .env 2>/dev/null; then
-    log_warn "Переменная REDIS_PASSWORD не найдена в .env"
-    log_info "Добавляем переменную REDIS_PASSWORD в .env..."
-    
-    # Функция генерации безопасного пароля
-    generate_password() {
-        openssl rand -base64 24 | tr -d "=+/" | cut -c1-32
-    }
-    
-    REDIS_PASSWORD=$(generate_password)
-    
-    # Добавляем переменную REDIS_PASSWORD в .env
-    if grep -q "^# Redis" .env; then
-        sed -i "/^# Redis/a REDIS_PASSWORD=${REDIS_PASSWORD}" .env
-    else
-        {
-            echo ""
-            echo "# Redis"
-            echo "REDIS_PASSWORD=${REDIS_PASSWORD}"
-        } >> .env
-    fi
-    
-    log_info "Переменная REDIS_PASSWORD добавлена в .env"
+    log_error "Переменная REDIS_PASSWORD не найдена в .env"
+    log_error "Обновите secrets через: sudo bash scripts/12-generate-secrets.sh --profile ai-stack"
+    exit 1
 fi
 
 # Запуск Redis из основного docker-compose.yml
@@ -135,7 +96,7 @@ log_info "=== Информация о Redis ==="
 log_info "Хост: localhost"
 log_info "Порт: 6379"
 log_info "Пароль: см. в файле .env (REDIS_PASSWORD)"
-log_info "Для просмотра пароля: grep REDIS_PASSWORD $COMPOSE_DIR/.env"
+log_warn "Не выводите secrets в терминал; храните копию в password manager"
 echo ""
 
 log_info "Установка Redis завершена!"
