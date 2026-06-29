@@ -62,12 +62,12 @@ This document defines profile-level acceptance criteria. It does not replace [QU
 ## ai-stack
 
 - Required preflight: `scripts/00-preflight-check.sh --profile ai-stack`.
-- Expected installed components: Docker Engine, Docker Compose plugin, generated local secrets, PostgreSQL/Supabase-related services as currently scoped, Redis, pgvector, PgBouncer, n8n, monitoring path, backups, and ready checks.
+- Expected installed components: Docker Engine, Docker Compose plugin, generated local secrets, PostgreSQL with selected Supabase-related components where implemented, Redis, pgvector, PgBouncer, n8n, monitoring path, backups, and ready checks.
 - Required open ports: SSH plus Nginx/reverse proxy ports when public access is intentionally configured. SSH tunnel is acceptable for admin access.
-- Ports that must remain closed: PostgreSQL, Redis, PgBouncer, internal Supabase-related ports, n8n, Prometheus, Grafana, and direct Compose-published service ports unless an advanced explicit public access mode is reviewed separately.
+- Ports that must remain closed: PostgreSQL, Redis, PgBouncer, implemented Supabase-related local ports, n8n, Prometheus, Grafana, and direct Compose-published service ports unless an advanced explicit public access mode is reviewed separately.
 - Verification commands: profile ready check, `docker compose config`, `docker compose ps`, service health checks, and backup readiness checks.
 - Rollback/recovery expectations: document how to stop the stack without deleting data, how to avoid `docker compose down -v` unless data removal is intentional, and how to restore from backup.
-- Clean Ubuntu 24.04 VM smoke-test expectations: full selected stack starts from generated local secrets and passes ready checks without public direct Compose exposure.
+- Clean Ubuntu 24.04 VM smoke-test expectations: selected `ai-stack` services start from generated local secrets and pass ready checks without public direct Compose exposure. Full Supabase platform services are not part of the current implemented stack.
 - Ubuntu 26.04 compatibility validation expectations: validate Docker, Compose, service images, health checks, and backup/restore behavior before claiming compatibility.
 
 ## Related Docs
