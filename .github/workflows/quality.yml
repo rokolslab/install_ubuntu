@@ -1,0 +1,68 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  static-quality:
+    name: Static quality
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Whitespace check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            git diff --check "origin/${{ github.base_ref }}...HEAD"
+          elif git rev-parse HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^..HEAD
+          else
+            git diff --check --root HEAD
+          fi
+
+      - name: Bash syntax check
+        run: bash -n scripts/*.sh scripts/security/*.sh scripts/lib/*.sh
+
+      - name: ShellCheck
+        run: |
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            echo "::error::ShellCheck is not available on this runner. Decide a tool installation strategy in a separate PR."
+            exit 1
+          fi
+          shellcheck -x --severity=warning scripts/*.sh scripts/security/*.sh scripts/lib/*.sh
+
+      - name: Compose base config
+        working-directory: docker-compose
+        run: docker compose --env-file env.example config >/tmp/install_ubuntu_ci_base.yml
+
+      - name: Compose monitoring config
+        working-directory: docker-compose
+        run: docker compose --env-file env.example -f docker-compose.yml -f docker-compose.monitoring.yml config >/tmp/install_ubuntu_ci_monitoring.yml
+
+      - name: Compose latest image guard
+        run: |
+          if grep -RInE 'image:[[:space:]]*.*:latest|image:[[:space:]]*latest' docker-compose/*.yml; then
+            echo "::error::Compose images must not use latest tags."
+            exit 1
+          fi
+
+      - name: Removed public override guard
+        run: |
+          if grep -RInE 'docker-compose.override.public|override.public|compose.override.public' README.md QUICKSTART.md docs docker-compose PLAN.md; then
+            echo "::error::Removed public Compose override is still referenced."
+            exit 1
+          fi
+
+      - name: Tracked secret-file guard
+        run: |
+          tracked_secret_files="$(git ls-files | grep -E '(^|/)\.env$|docker-compose/\.env$|\.env\.local$|\.secret$|\.secrets$|(^|/)secrets\.' || true)"
+          if [ -n "$tracked_secret_files" ]; then
+            echo "::error::Secret-like local files must not be tracked:"
+            printf '%s\n' "$tracked_secret_files"
+            exit 1
+          fi
