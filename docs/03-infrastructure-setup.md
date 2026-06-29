@@ -84,17 +84,15 @@ docker compose --env-file .env up -d
 
 Не запускайте `scripts/12-generate-secrets.sh` для `minimal`, `proxy`, `docker-host` или `web`: эти профили не используют compose secrets.
 
-Для публичного доступа (опционально):
-```bash
-docker compose -f docker-compose.yml -f docker-compose.override.public.yml up -d
-```
+Доступ по умолчанию остаётся только через localhost. Для админского доступа используйте SSH tunnel, например `ssh -L 5678:127.0.0.1:5678 user@server`, а для reviewed public access используйте [Nginx/reverse proxy](07-nginx.md).
 
 Примечания:
 - Порты БД и Redis привязаны к `127.0.0.1` для безопасности.
-- Для внешнего доступа используйте SSH‑туннель или reverse proxy.
+- Supabase Studio, n8n, Prometheus и Grafana не должны публиковаться наружу напрямую через direct Compose ports.
+- Для внешнего доступа используйте SSH‑туннель или Nginx/reverse proxy.
 - Supabase Studio требует сервис `supabase_meta` (он включён в compose).
 - n8n подключается к БД через PgBouncer (`localhost:6432` для хоста).
-- n8n по умолчанию доступен только на `127.0.0.1`, для внешнего доступа используйте override.
+- n8n по умолчанию доступен только на `127.0.0.1`; не открывайте его direct Compose port публично.
 - Для production используйте защищённый `.env` или Docker secrets.
 - Рекомендуется регулярная ротация паролей (минимум раз в 90 дней).
 

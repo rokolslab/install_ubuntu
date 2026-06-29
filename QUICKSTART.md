@@ -123,7 +123,7 @@ docker compose ps
 sudo bash ../scripts/99-ready-checks.sh --profile ai-stack
 ```
 
-По умолчанию PostgreSQL, Redis, Supabase Studio и n8n привязаны к `127.0.0.1`. Для внешнего доступа используйте SSH tunnel или [Nginx](docs/07-nginx.md).
+По умолчанию PostgreSQL, Redis, Supabase Studio и n8n привязаны к `127.0.0.1`. Для внешнего доступа используйте SSH tunnel или [Nginx](docs/07-nginx.md); do not expose admin services through direct Compose ports.
 
 Критичные переменные в `docker-compose/.env`:
 
