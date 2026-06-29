@@ -11,6 +11,7 @@ secrets.*
 # Local AI tool state
 .ai-factory.json
 .opencode/
+.ai-factory/plans/
 
 # Backups and logs
 backups/
