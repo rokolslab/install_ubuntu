@@ -18,13 +18,13 @@
 
 - Beginner Linux administrators learning safe VPS operations.
 - Practical IT administrators who need repeatable bootstrap steps.
-- AI automation builders who need a documented Ubuntu base before running n8n, PostgreSQL/Supabase-related services, Redis, pgvector, monitoring, and backups.
+- AI automation builders who need a documented Ubuntu base before running n8n, PostgreSQL with selected Supabase-related components, Redis, pgvector, monitoring, and backups.
 
 ## Supported Profiles
 
 The governed profiles are `minimal`, `proxy`, `docker-host`, `web`, and `ai-stack`. Profile behavior and command order live in [VPS Profiles](profiles.md), [Scripts Catalog](scripts-catalog.md), and [Scripts Order](15-scripts-order.md).
 
-Current project docs and claims must not imply full Supabase support until a separate Supabase scope PR decides whether this project supports full self-hosted Supabase or only PostgreSQL plus selected Supabase-related components.
+Current project docs and claims must not imply full Supabase support. The current supported scope is PostgreSQL with selected Supabase-related components only where implemented: Supabase Postgres image, Supabase Meta, Supabase Studio, pgvector, PgBouncer, Redis and n8n.
 
 ## OS Baseline
 
@@ -40,7 +40,7 @@ These non-goals keep the project small and safe:
 - No broad rewrites without evidence.
 - No automatic installation of third-party proxy panels.
 - No public exposure of internal databases, cache, dashboards, or automation tools by default.
-- No full Supabase scope claim until a dedicated scope PR resolves it.
+- No full Supabase scope claim. Full Supabase implementation is out of scope unless approved as a future advanced phase.
 - No exact package pinning policy inside setup docs; version policy belongs in [Version Policy](version-policy.md).
 
 ## Installation Philosophy

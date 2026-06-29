@@ -12,7 +12,7 @@
 | `proxy` | x-ui/3x-ui/VPN/proxy panel base | 512MB-1GB RAM, 5GB disk minimum; 10GB+ recommended | minimal flow + явные service ports |
 | `docker-host` | Маленький Docker host | 1GB RAM, 10GB disk | minimal flow + Docker install |
 | `web` | Небольшой web/app VPS | 1GB RAM, 15GB disk | minimal flow + Nginx/reverse proxy |
-| `ai-stack` | n8n/Supabase/Redis/pgvector stack | 4GB RAM, 50GB disk | Docker, secrets, compose stack, ready checks |
+| `ai-stack` | n8n, Redis, PostgreSQL/Supabase-related components, pgvector stack | 4GB RAM, 50GB disk | Docker, secrets, compose stack, ready checks |
 
 ## Optional Swap For Small VPS
 
@@ -111,7 +111,7 @@ docker compose --env-file .env up -d
 sudo bash ../scripts/99-ready-checks.sh --profile ai-stack
 ```
 
-`ai-stack` включает тяжёлые сервисы: Supabase/PostgreSQL, Redis, pgvector, PgBouncer, n8n, monitoring path. Не используйте его как default для маленького VPS.
+`ai-stack` включает тяжёлые сервисы: PostgreSQL with selected Supabase-related components, Redis, pgvector, PgBouncer, n8n, monitoring path. Не используйте его как default для маленького VPS.
 
 ## See Also
 

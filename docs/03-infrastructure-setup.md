@@ -2,7 +2,7 @@
 
 # Инфраструктура для мультиагентных ассистентов
 
-Это руководство описывает установку и настройку всех компонентов инфраструктуры для мультиагентных ассистентов на базе n8n с Supabase, Redis и pgvector.
+Это руководство описывает установку и настройку компонентов инфраструктуры для мультиагентных ассистентов на базе n8n, PostgreSQL with selected Supabase-related components, Redis и pgvector.
 
 ## Предварительные требования
 
@@ -16,7 +16,7 @@
 
 ## Обзор компонентов
 
-- **Supabase** - Self-hosted база данных PostgreSQL с аутентификацией и API
+- **PostgreSQL/Supabase-related components** - PostgreSQL using Supabase Postgres image, Supabase Meta and Studio where implemented
 - **pgvector** - Расширение PostgreSQL для векторного поиска
 - **PgBouncer** - пул соединений PostgreSQL (для n8n)
 - **Redis** - Кэш и очередь задач
@@ -27,7 +27,7 @@
 
 Каждый компонент имеет отдельное руководство:
 
-1. **[Установка Supabase](03-supabase.md)** - Self-hosted PostgreSQL с pgvector
+1. **[Supabase-related PostgreSQL](03-supabase.md)** - PostgreSQL с Supabase Meta/Studio и pgvector
 2. **[Установка Redis](05-redis.md)** - Кэш и очередь задач
 3. **[Настройка векторной БД](06-vector-db.md)** - pgvector таблицы и функции
 4. **[Установка n8n](04-n8n.md)** - Платформа автоматизации с воркерами
@@ -48,25 +48,25 @@
    ```
    См. [13-secrets.md](13-secrets.md) для подробностей.
 
-1. **Supabase** - базовая инфраструктура БД
+1. **PostgreSQL/Supabase-related DB** - базовая инфраструктура БД
    ```bash
    sudo bash scripts/04-setup-supabase.sh
    ```
    См. [03-supabase.md](03-supabase.md) для подробностей
 
-2. **Redis** - очередь задач (можно установить параллельно с Supabase)
+2. **Redis** - очередь задач (можно установить параллельно с PostgreSQL)
    ```bash
    sudo bash scripts/06-setup-redis.sh
    ```
    См. [05-redis.md](05-redis.md) для подробностей
 
-3. **Векторная БД** - настройка pgvector в Supabase
+3. **Векторная БД** - настройка pgvector в PostgreSQL
    ```bash
    sudo bash scripts/07-setup-vector-db.sh
    ```
    См. [06-vector-db.md](06-vector-db.md) для подробностей
 
-4. **n8n** - требует Supabase и Redis
+4. **n8n** - требует PostgreSQL и Redis
    ```bash
    sudo bash scripts/05-setup-n8n.sh
    ```
@@ -153,5 +153,5 @@ docker exec redis redis-cli -a YOUR_PASSWORD --rdb /data/dump.rdb
 ## See Also
 
 - [Architecture](architecture.md) — компоненты и потоки данных.
-- [Supabase](03-supabase.md) — база данных и pgvector foundation.
+- [Supabase scope](03-supabase.md) — PostgreSQL and implemented Supabase-related components.
 - [n8n](04-n8n.md) — automation runtime поверх инфраструктуры.

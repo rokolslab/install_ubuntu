@@ -14,10 +14,10 @@
 | `scripts/02-security-baseline.sh` | Короткий orchestrator security baseline | `minimal`, `proxy`, `docker-host`, `web`, `ai-stack` | После preflight и SSH keys | Не устанавливает Docker, Nginx, Supabase, Redis или n8n |
 | `scripts/security/swap.sh` | Optional idempotent swapfile для маленьких VPS | `minimal`, `proxy`, `docker-host` | Если preflight показывает малую RAM/no swap | Не пересоздаёт существующий swap без `--force-recreate` |
 | `scripts/03-install-docker.sh` | Устанавливает Docker Engine и Docker Compose | `docker-host`, `ai-stack` | После security baseline, если профиль требует контейнеры | Не нужен для `minimal`/`proxy` по умолчанию и не поднимает compose stack |
-| `scripts/04-setup-supabase.sh` | Готовит Supabase/PostgreSQL компоненты | `ai-stack` | Только в AI stack flow | Не нужен для minimal/proxy VPS |
+| `scripts/04-setup-supabase.sh` | Готовит PostgreSQL (`supabase_db`) | `ai-stack` | Только в AI stack flow | Не поднимает full Supabase platform |
 | `scripts/05-setup-n8n.sh` | Настраивает n8n main/worker | `ai-stack` | После DB/Redis prerequisites | Не ставит Docker и не генерирует secrets |
 | `scripts/06-setup-redis.sh` | Настраивает Redis для очередей/cache | `ai-stack` | До n8n queue mode | Не открывает Redis наружу |
-| `scripts/07-setup-vector-db.sh` | Готовит pgvector таблицы/индексы | `ai-stack` | После PostgreSQL/Supabase | Не заменяет backup/restore процедуры |
+| `scripts/07-setup-vector-db.sh` | Готовит pgvector таблицы/индексы | `ai-stack` | После PostgreSQL | Не заменяет backup/restore процедуры |
 | `scripts/08-setup-nginx.sh` | Настраивает Nginx/reverse proxy path | `web`, `ai-stack`, optional `proxy` | Когда нужен публичный HTTP/HTTPS entry point | Не должен открывать внутренние DB/cache порты |
 | `scripts/09-install-nvidia-drivers.sh` | Устанавливает NVIDIA drivers | optional | Только для GPU hosts | Не нужен для обычного маленького VPS |
 | `scripts/10-backup-postgres.sh` | Выполняет PostgreSQL backup | `ai-stack` | После запуска DB и настройки `.env` | Не настраивает cron сам по себе |

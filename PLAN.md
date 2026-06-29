@@ -18,7 +18,7 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 | Secrets safety PR | ✅ Completed | Committed as `89ab2bb fix: harden generated secrets handling`. |
 | Project governance baseline | 🔄 Current | Add requirements, version policy, acceptance criteria, and roadmap links. |
 | Ubuntu 26.04 compatibility validation | ⏳ Planned | Validate packages, scripts, Docker, Compose and profile ready checks before compatibility claims. |
-| Supabase scope clarity | ⏳ Planned | Decide whether the project supports full Supabase or only PostgreSQL plus selected Supabase-related components. |
+| Supabase scope clarity | 🔄 Current | Narrow docs-only scope: current support is PostgreSQL with selected Supabase-related components; Full Supabase implementation is not approved and deferred. |
 | Public Compose override correctness | ⏳ Planned | Review direct public Compose override as advanced explicit mode, not default public access. |
 | Version policy enforcement | ⏳ Planned | Align package/image handling with `docs/version-policy.md`. |
 | CI/quality gates | ⏳ Planned | Add automated syntax, lint and documentation checks in a separate PR. |
