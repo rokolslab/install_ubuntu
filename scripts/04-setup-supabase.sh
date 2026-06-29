@@ -24,12 +24,6 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Функция генерации безопасного пароля
-generate_password() {
-    # Генерируем пароль длиной 32 символа из букв, цифр и спецсимволов
-    openssl rand -base64 24 | tr -d "=+/" | cut -c1-32
-}
-
 # Проверка Docker
 if ! command -v docker &> /dev/null; then
     log_error "Docker не установлен. Установите Docker сначала."
@@ -58,26 +52,9 @@ cd "$COMPOSE_DIR"
 
 # Проверяем наличие .env файла
 if [ ! -f ".env" ]; then
-    log_info "Файл .env не найден. Создаём с автоматически сгенерированными паролями..."
-    if [ -f "env.example" ]; then
-        # Генерируем пароли
-        REDIS_PASSWORD=$(generate_password)
-        SUPABASE_PASSWORD=$(generate_password)
-        N8N_PASSWORD=$(generate_password)
-        
-        # Создаём .env файл с сгенерированными паролями
-        sed -e "s/your-secure-redis-password-here/${REDIS_PASSWORD}/" \
-            -e "s/your-secure-supabase-password-here/${SUPABASE_PASSWORD}/" \
-            -e "s/your-secure-n8n-password-here/${N8N_PASSWORD}/" \
-            env.example > .env
-        
-        log_info "Файл .env создан с автоматически сгенерированными паролями"
-        log_warn "ВАЖНО: Сохраните пароли из файла .env в безопасном месте!"
-        log_info "Файл: $COMPOSE_DIR/.env"
-    else
-        log_error "Файл env.example не найден!"
-        exit 1
-    fi
+    log_error "Файл .env не найден в $COMPOSE_DIR"
+    log_error "Сначала создайте secrets через: sudo bash scripts/12-generate-secrets.sh --profile ai-stack"
+    exit 1
 fi
 
 # Запуск сервиса Supabase PostgreSQL
@@ -121,5 +98,5 @@ fi
 log_info "Установка Supabase завершена!"
 echo ""
 log_warn "=== ВАЖНО: Сохраните пароли ==="
-log_info "Пароли сохранены в файле: $COMPOSE_DIR/.env"
-log_info "Для просмотра паролей выполните: cat $COMPOSE_DIR/.env | grep PASSWORD"
+log_info "Secrets находятся в локальном файле: $COMPOSE_DIR/.env"
+log_warn "Не выводите secrets в терминал; храните копию в password manager"

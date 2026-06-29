@@ -12,7 +12,7 @@ Most self-hosted projects need the same foundation before product work starts:
 
 - hardened SSH access, firewall, fail2ban and security updates;
 - Docker and Docker Compose installed correctly when containers are needed;
-- PostgreSQL/Supabase, Redis and pgvector for AI workflows and RAG on larger hosts;
+- PostgreSQL with selected Supabase-related components, Redis and pgvector for AI workflows and RAG on larger hosts;
 - n8n main/worker setup for automation pipelines on the `ai-stack` profile;
 - Nginx, SSL, monitoring, backups and readiness checks when the selected profile needs them.
 
@@ -24,7 +24,7 @@ This repo turns that foundation into documented steps, scripts and compose files
 |------|----------|
 | Server baseline | Ubuntu hardening, SSH keys, UFW, fail2ban, unattended upgrades |
 | Container runtime | Docker Engine, Docker Compose, daemon configuration |
-| AI automation stack | n8n, Redis, Supabase/PostgreSQL, pgvector, PgBouncer for `ai-stack` |
+| AI automation stack | n8n, Redis, PostgreSQL with selected Supabase-related components, pgvector, PgBouncer for `ai-stack` |
 | Production support | Nginx reverse proxy, SSL path, monitoring, backups, ready checks |
 | Safety | Secret generation, closed local ports, healthchecks, version-pinned compose |
 | Documentation | Step-by-step guides for VPS and local server installation |
@@ -37,7 +37,7 @@ This repo turns that foundation into documented steps, scripts and compose files
 | `proxy` | Base for x-ui/3x-ui/VPN/proxy panel | minimal path + explicit service ports |
 | `docker-host` | Small container host | minimal path + Docker install |
 | `web` | Small web/app server | minimal path + HTTP/HTTPS reverse proxy |
-| `ai-stack` | Full n8n/Supabase/Redis/pgvector stack | Docker, secrets, compose stack, service ready checks |
+| `ai-stack` | n8n, Redis, PostgreSQL/Supabase-related components, pgvector stack | Docker, secrets, compose stack, service ready checks |
 
 `4GB RAM / 50GB disk` belongs to `ai-stack`, not to every VPS. A `1 vCPU / 1GB RAM` server can still be valid for `minimal` or `proxy` with warnings.
 
@@ -71,7 +71,7 @@ For the full installation path, use [QUICKSTART.md](QUICKSTART.md). To understan
 
 - Prepare a VPS for AI assistants and Telegram bots.
 - Run n8n workflows with Redis queue mode and PostgreSQL storage.
-- Build a self-hosted RAG base with Supabase/PostgreSQL and pgvector.
+- Build a self-hosted RAG base with PostgreSQL, selected Supabase-related components and pgvector.
 - Standardize repeatable infrastructure setup for client AI automation projects.
 - Keep deployment knowledge in scripts and docs instead of one-off terminal history.
 
@@ -91,6 +91,9 @@ For the full installation path, use [QUICKSTART.md](QUICKSTART.md). To understan
 | Guide | Description |
 |-------|-------------|
 | [Quick Start](QUICKSTART.md) | End-to-end installation path |
+| [Project Requirements](docs/project-requirements.md) | Scope, baseline and change-control rules |
+| [Version Policy](docs/version-policy.md) | Ubuntu packages, Docker and Compose image version rules |
+| [Acceptance Criteria](docs/acceptance-criteria.md) | Profile-level readiness expectations |
 | [System Requirements](requirements/system-requirements.md) | CPU, RAM, disk and OS requirements |
 | [VPS Profiles](docs/profiles.md) | Minimal, proxy, docker-host, web and ai-stack profiles |
 | [Server Security](docs/01-server-security.md) | SSH, UFW, fail2ban and hardening |
@@ -101,7 +104,7 @@ For the full installation path, use [QUICKSTART.md](QUICKSTART.md). To understan
 | [Infrastructure Setup](docs/03-infrastructure-setup.md) | Stack overview and deployment order |
 | [Architecture](docs/architecture.md) | Runtime components and data flow |
 | [Architecture Operations](docs/architecture-operations.md) | Scaling, backups and performance notes |
-| [Supabase](docs/03-supabase.md) | Self-hosted Supabase setup |
+| [Supabase scope](docs/03-supabase.md) | PostgreSQL with Supabase-related Meta/Studio components |
 | [n8n](docs/04-n8n.md) | n8n main/worker deployment |
 | [Redis](docs/05-redis.md) | Redis setup for queues and caching |
 | [pgvector](docs/06-vector-db.md) | Vector search setup for RAG |

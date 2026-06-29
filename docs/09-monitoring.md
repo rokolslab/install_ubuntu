@@ -36,6 +36,7 @@ docker compose -f docker-compose.yml -f docker-compose.monitoring.yml ps
 Примечание:
 - Порты мониторинга привязаны к `127.0.0.1`.
 - Для внешнего доступа используйте SSH‑туннель или reverse proxy.
+- Do not expose Prometheus or Grafana through direct Compose ports.
 
 ## 4. Источники метрик
 В базовой конфигурации Prometheus собирает метрики n8n по `/metrics`:

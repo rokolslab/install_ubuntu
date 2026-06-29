@@ -10,9 +10,9 @@
 | `proxy` | 512MB-1GB RAM, 10GB disk | база под x-ui/3x-ui/VPN/proxy panel |
 | `docker-host` | 1GB RAM, 10GB disk | маленький Docker host |
 | `web` | 1GB RAM, 15GB disk | web/app VPS с HTTP/HTTPS |
-| `ai-stack` | 4GB RAM, 50GB disk | n8n, Supabase/PostgreSQL, Redis, pgvector, monitoring |
+| `ai-stack` | 4GB RAM, 50GB disk | n8n, PostgreSQL/Supabase-related components, Redis, pgvector, monitoring |
 
-Общее: Ubuntu 22.04 LTS или 24.04 LTS, root/sudo доступ, рабочий SSH. Для bare metal с новым железом сначала проверьте [драйверы и совместимость](docs/08-hardware-drivers.md).
+Общее: Ubuntu 24.04 LTS как primary baseline, root/sudo доступ, рабочий SSH. Ubuntu 26.04 LTS — compatibility/validation target, не fully validated primary support. Для bare metal с новым железом сначала проверьте [драйверы и совместимость](docs/08-hardware-drivers.md).
 
 ## 1. Получите проект
 
@@ -108,7 +108,7 @@ sudo bash scripts/99-ready-checks.sh --profile web
 
 ## 7. AI Automation Stack
 
-Используйте для полного Docker Compose stack: n8n, Supabase/PostgreSQL, Redis, pgvector, PgBouncer, monitoring и backups.
+Используйте для Docker Compose stack: n8n, PostgreSQL with selected Supabase-related components, Redis, pgvector, PgBouncer, monitoring и backups.
 
 ```bash
 sudo bash scripts/00-preflight-check.sh --profile ai-stack
@@ -121,14 +121,14 @@ docker compose ps
 sudo bash ../scripts/99-ready-checks.sh --profile ai-stack
 ```
 
-По умолчанию PostgreSQL, Redis, Supabase Studio и n8n привязаны к `127.0.0.1`. Для внешнего доступа используйте SSH tunnel или [Nginx](docs/07-nginx.md).
+По умолчанию PostgreSQL, Redis, Supabase Studio и n8n привязаны к `127.0.0.1`. Для внешнего доступа используйте SSH tunnel или [Nginx](docs/07-nginx.md); do not expose admin services through direct Compose ports.
 
 Критичные переменные в `docker-compose/.env`:
 
 | Переменная | Назначение |
 |------------|------------|
 | `REDIS_PASSWORD` | пароль Redis |
-| `SUPABASE_DB_PASSWORD` | пароль PostgreSQL/Supabase |
+| `SUPABASE_DB_PASSWORD` | пароль PostgreSQL (`supabase_db`) |
 | `N8N_BASIC_AUTH_PASSWORD` | пароль n8n |
 | `N8N_ENCRYPTION_KEY` | ключ шифрования n8n |
 | `N8N_USER_MANAGEMENT_JWT_SECRET` | JWT secret n8n |

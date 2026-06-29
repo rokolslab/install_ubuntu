@@ -1,199 +1,89 @@
 [← Architecture Operations](architecture-operations.md) · [Back to README](../README.md) · [n8n →](04-n8n.md)
 
-# Установка Supabase (Self-hosted)
+# PostgreSQL With Supabase-Related Components
 
-Supabase предоставляет PostgreSQL базу данных с дополнительными функциями: аутентификация, хранилище, real-time подписки.
+This repository does not currently provide full self-hosted Supabase. The supported scope is PostgreSQL with selected Supabase-related components where they are actually implemented in `docker-compose/docker-compose.yml`.
 
-## Предварительные требования
+## Current Scope
 
-- Docker и Docker Compose установлены ([Этап 2](02-docker-installation.md))
-- Минимум 2 GB RAM для Supabase
-- Порты: 54321 (API), 54322 (DB), 54323 (Studio)
+Implemented for `ai-stack`:
+- PostgreSQL using the Supabase Postgres image (`supabase_db`).
+- `pgvector` setup through `docker-compose/supabase/init.sql` and [pgvector](06-vector-db.md).
+- Supabase Meta (`supabase_meta`) for Studio metadata access.
+- Supabase Studio (`supabase_studio`) as a local admin UI.
+- PgBouncer, Redis, n8n and n8n worker as part of the broader AI automation stack.
 
-## Шаг 1: Установка Supabase CLI
+Not implemented in the current stack:
+- Supabase Auth / GoTrue.
+- PostgREST / REST API.
+- Supabase Realtime.
+- Supabase Storage.
+- Edge Functions.
+- Kong / API gateway.
+- Full self-hosted Supabase platform support.
 
-```bash
-# Установка через npm (требуется Node.js)
-npm install -g supabase
+Full Supabase is deferred and not current support.
 
-# Или через Docker (рекомендуется)
-docker pull supabase/cli:latest
-```
+## Component Matrix
 
-## Шаг 2: Инициализация проекта
+| Component | Current status | Documentation wording |
+|---|---|---|
+| PostgreSQL / Supabase Postgres image | Present | PostgreSQL using Supabase Postgres image |
+| pgvector | Present | pgvector on PostgreSQL |
+| Supabase Meta | Present | selected Supabase-related component for Studio |
+| Supabase Studio | Present | optional local Studio UI |
+| PgBouncer | Present | PostgreSQL connection pooling |
+| Redis | Present | queue/cache component |
+| n8n | Present | automation runtime |
+| Supabase Auth / GoTrue | Not implemented | not part of the current implemented stack |
+| PostgREST / REST API | Not implemented | not part of the current implemented stack |
+| Supabase Realtime | Not implemented | not part of the current implemented stack |
+| Supabase Storage | Not implemented | not part of the current implemented stack |
+| Edge Functions | Not implemented | not part of the current implemented stack |
+| Kong / API gateway | Not implemented | not part of the current implemented stack |
 
-```bash
-# Создаём директорию для проекта
-mkdir -p ~/supabase
-cd ~/supabase
+## Prerequisites
 
-# Инициализируем проект
-supabase init
-```
+- Docker and Docker Compose installed: [Docker Installation](02-docker-installation.md).
+- Generated local secrets in `docker-compose/.env`: [Secrets](13-secrets.md).
+- `ai-stack` resources from [System Requirements](../requirements/system-requirements.md).
 
-## Шаг 3: Настройка конфигурации
+## Startup Path
 
-Редактируем `supabase/config.toml`:
+Use the canonical `ai-stack` flow from [Quick Start](../QUICKSTART.md). The current compose stack starts the implemented services only; it does not start Auth, REST API, Realtime, Storage, Edge Functions or an API gateway.
 
-```toml
-[project]
-# Имя проекта
-name = "my-project"
+For component scripts, `scripts/04-setup-supabase.sh` starts `supabase_db` only. Use the full compose flow when you need `supabase_meta` and `supabase_studio` as well.
 
-[auth]
-# Настройки аутентификации
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://yourdomain.com"]
+## Local Endpoints
 
-[api]
-# Порт API Gateway
-port = 54321
-schemas = ["public", "storage", "graphql_public"]
-extra_search_path = ["public", "extensions"]
+| Service | Local endpoint | Notes |
+|---|---|---|
+| PostgreSQL | `localhost:54322` | Password is `SUPABASE_DB_PASSWORD` in local `.env`; do not print it. |
+| PgBouncer | `localhost:6432` | Used by n8n for PostgreSQL connection pooling. |
+| Supabase Studio | `http://localhost:54323` | Local UI backed by `supabase_meta`. |
 
-[db]
-# Порт PostgreSQL
-port = 54322
-# Пароль для postgres пользователя (ИЗМЕНИТЕ!)
-password = "your-super-secret-password"
-```
+These ports are bound to `127.0.0.1` in the default compose file. For external access, use SSH tunnel or a reviewed Nginx/reverse proxy path.
 
-Или используйте готовый файл конфигурации: `docker-compose/supabase/config.toml`
+## pgvector
 
-## Шаг 4: Запуск Supabase
+`pgvector` setup is documented in [pgvector](06-vector-db.md). The SQL source of truth is `docker-compose/supabase/init.sql`.
 
-```bash
-# Запуск через Docker Compose
-supabase start
+Safe checks should avoid printing secrets. Prefer commands that use existing environment handling or run through documented scripts instead of pasting passwords into terminal history.
 
-# Или используя наш скрипт
-sudo bash scripts/04-setup-supabase.sh
-```
+## Troubleshooting
 
-## Шаг 5: Получение API ключей
+If PostgreSQL is not reachable:
+- Check that the `supabase_db` service is running.
+- Check logs for `supabase_db` without printing `.env` contents.
+- Confirm `docker-compose/.env` exists and was generated through [Secrets](13-secrets.md).
 
-После запуска Supabase выведет информацию о подключении:
-
-```bash
-supabase status
-```
-
-Сохраните:
-- **API URL**: `http://localhost:54321`
-- **anon key**: публичный ключ для клиентских приложений
-- **service_role key**: секретный ключ для серверных операций
-- **DB URL**: строка подключения к PostgreSQL
-
-## Шаг 6: Настройка pgvector расширения
-
-pgvector уже включён в Supabase. Проверяем:
-
-```bash
-# Подключаемся к базе данных
-psql postgresql://postgres:your-password@localhost:54322/postgres
-
-# В psql выполняем:
-CREATE EXTENSION IF NOT EXISTS vector;
-\dx  # Проверяем установленные расширения
-\q
-```
-
-Или используйте скрипт настройки векторной БД: [см. установку pgvector](06-vector-db.md)
-
-## Шаг 7: Создание начальной схемы БД
-
-Пример SQL для создания таблицы с векторами (уже включён в `docker-compose/supabase/init.sql`):
-
-```sql
--- Создаём таблицу для хранения документов с эмбеддингами
-CREATE TABLE documents (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  content TEXT NOT NULL,
-  embedding vector(1536),  -- Размерность для OpenAI embeddings
-  metadata JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Создаём индекс для векторного поиска (HNSW)
-CREATE INDEX ON documents 
-USING hnsw (embedding vector_cosine_ops);
-
--- Функция для поиска похожих документов
-CREATE OR REPLACE FUNCTION match_documents(
-  query_embedding vector(1536),
-  match_threshold float DEFAULT 0.7,
-  match_count int DEFAULT 10
-)
-RETURNS TABLE (
-  id UUID,
-  content TEXT,
-  similarity float,
-  metadata JSONB
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    documents.id,
-    documents.content,
-    1 - (documents.embedding <=> query_embedding) as similarity,
-    documents.metadata
-  FROM documents
-  WHERE 1 - (documents.embedding <=> query_embedding) > match_threshold
-  ORDER BY documents.embedding <=> query_embedding
-  LIMIT match_count;
-END;
-$$;
-```
-
-## Проверка работы
-
-```bash
-# Проверка статуса
-supabase status
-
-# Проверка подключения к БД
-docker exec supabase_db psql -U postgres -c "SELECT version();"
-
-# Доступ к Studio (если включён)
-# http://localhost:54323
-```
-
-## Устранение неполадок
-
-### Проблема: Не удаётся запустить Supabase
-
-```bash
-# Проверьте логи
-docker logs supabase_db
-
-# Проверьте порты
-sudo netstat -tlnp | grep 5432
-```
-
-### Проблема: Ошибки подключения к БД
-
-```bash
-# Проверьте пароль в config.toml
-# Проверьте, что контейнер запущен
-docker ps | grep supabase
-```
-
-## Следующие шаги
-
-После установки Supabase:
-1. Настройте векторную БД: [06-vector-db.md](06-vector-db.md)
-2. Установите Redis: [05-redis.md](05-redis.md)
-3. Установите n8n: [04-n8n.md](04-n8n.md)
-
-## Источники
-
-- [Официальная документация Supabase Self-hosting](https://supabase.com/docs/guides/self-hosting)
-- [Документация pgvector](https://github.com/pgvector/pgvector)
+If Studio is not reachable:
+- Check that both `supabase_meta` and `supabase_studio` are running in the compose stack.
+- Confirm access uses `http://localhost:54323` unless a reviewed reverse proxy path is configured.
 
 ## See Also
 
-- [pgvector](06-vector-db.md) — настройка vector search поверх PostgreSQL.
-- [Secrets](13-secrets.md) — управление паролями Supabase и `.env`.
-- [Backups](10-backup-restore.md) — резервное копирование PostgreSQL.
+- [Infrastructure Setup](03-infrastructure-setup.md) — AI stack component order.
+- [pgvector](06-vector-db.md) — vector search setup on PostgreSQL.
+- [Secrets](13-secrets.md) — `.env` generation and rotation.
+- [Backups](10-backup-restore.md) — PostgreSQL backup and restore.

@@ -1,0 +1,28 @@
+# Local environment and generated secrets
+.env
+docker-compose/.env
+*.env.local
+*.secret
+*.secrets
+secrets.*
+*.key
+*.pem
+
+# Local AI tool state
+.ai-factory.json
+.opencode/
+.ai-factory/plans/
+
+# Backups and logs
+backups/
+logs/
+*.log
+
+# Local temporary artifacts
+tmp/
+.tmp/
+*.tmp
+*.swp
+*.swo
+*~
+.DS_Store

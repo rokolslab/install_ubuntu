@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Скрипт генерации секретов для .env и Supabase config.toml
+# Скрипт генерации секретов для локального docker-compose/.env
 
 set -Eeuo pipefail
 
@@ -31,7 +31,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPOSE_DIR="$PROJECT_ROOT/docker-compose"
 ENV_EXAMPLE="$COMPOSE_DIR/env.example"
 ENV_FILE="$COMPOSE_DIR/.env"
-SUPABASE_CONFIG="$COMPOSE_DIR/supabase/config.toml"
 
 # shellcheck source=lib/common.sh
 . "$SCRIPT_DIR/lib/common.sh"
@@ -64,10 +63,8 @@ case "${PROFILE:-}" in
     ;;
 esac
 
-# Проверка прав root
 if [ "$EUID" -ne 0 ]; then
-  log_error "Пожалуйста, запустите скрипт с правами root или через sudo"
-  exit 1
+  log_info "Secrets будут созданы от имени текущего пользователя"
 fi
 
 generate_password() {
@@ -106,6 +103,24 @@ set_env_value() {
   else
     echo "${key}=${value}" >> "$ENV_FILE"
   fi
+}
+
+secure_env_file() {
+  if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+    if id "$SUDO_USER" > /dev/null 2>&1; then
+      local target_group
+      target_group="$(id -gn "$SUDO_USER")"
+      chown "$SUDO_USER:$target_group" "$ENV_FILE"
+      log_info "Владелец .env: $SUDO_USER:$target_group"
+    else
+      log_warn "SUDO_USER=$SUDO_USER не найден; .env останется владельцем root"
+    fi
+  elif [ "$EUID" -eq 0 ]; then
+    log_warn "Скрипт запущен напрямую от root; .env останется root-owned и будет доступен только root"
+    log_warn "Запускайте последующие docker compose команды в контексте, который может прочитать .env"
+  fi
+
+  chmod 600 "$ENV_FILE"
 }
 
 if [ ! -f "$ENV_EXAMPLE" ]; then
@@ -150,24 +165,9 @@ for key in "${SECRETS[@]}"; do
     log_info "Сохранён существующий $key"
   fi
 done
-
-# Обновляем Supabase config.toml (пароль БД)
-if [ -f "$SUPABASE_CONFIG" ]; then
-  SUPABASE_DB_PASSWORD="$(get_env_value SUPABASE_DB_PASSWORD)"
-  if [ -z "$SUPABASE_DB_PASSWORD" ]; then
-    log_warn "SUPABASE_DB_PASSWORD пустой — config.toml не обновлён"
-  else
-    if grep -q "^password = " "$SUPABASE_CONFIG"; then
-      ESCAPED_SUPABASE_DB_PASSWORD="$(printf '%s' "$SUPABASE_DB_PASSWORD" | sed 's/[&/\\]/\\&/g')"
-      sed -i "s/^password = .*/password = \"${ESCAPED_SUPABASE_DB_PASSWORD}\"/" "$SUPABASE_CONFIG"
-      log_info "Обновлён пароль в config.toml"
-    else
-      log_warn "Не найдена строка password в config.toml"
-    fi
-  fi
-else
-  log_warn "config.toml не найден: $SUPABASE_CONFIG"
-fi
+secure_env_file
 
 log_info "Генерация секретов завершена"
 log_info "Файл: $ENV_FILE"
+log_info "Права доступа .env: 600"
+log_warn "Не записывайте сгенерированные secrets в tracked config files; храните копию в password manager"
