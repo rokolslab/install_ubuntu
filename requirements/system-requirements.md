@@ -6,7 +6,7 @@
 
 | Требование | Значение |
 |---|---|
-| ОС | Ubuntu Server 22.04 LTS или 24.04 LTS |
+| ОС | Ubuntu Server 24.04 LTS primary baseline; Ubuntu 26.04 LTS compatibility/validation target |
 | Архитектура | `x86_64` / `amd64` рекомендуется |
 | Доступ | `sudo` или root для server-side setup scripts |
 | Сеть | Стабильное интернет-соединение для apt/Docker downloads |
