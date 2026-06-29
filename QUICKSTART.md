@@ -12,7 +12,7 @@
 | `web` | 1GB RAM, 15GB disk | web/app VPS с HTTP/HTTPS |
 | `ai-stack` | 4GB RAM, 50GB disk | n8n, PostgreSQL/Supabase-related components, Redis, pgvector, monitoring |
 
-Общее: Ubuntu 22.04 LTS или 24.04 LTS, root/sudo доступ, рабочий SSH. Для bare metal с новым железом сначала проверьте [драйверы и совместимость](docs/08-hardware-drivers.md).
+Общее: Ubuntu 24.04 LTS как primary baseline, root/sudo доступ, рабочий SSH. Ubuntu 26.04 LTS — compatibility/validation target, не fully validated primary support. Для bare metal с новым железом сначала проверьте [драйверы и совместимость](docs/08-hardware-drivers.md).
 
 ## 1. Получите проект
 

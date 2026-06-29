@@ -8,7 +8,7 @@
 
 ## Предварительные требования
 
-- Ubuntu 22.04 LTS или Ubuntu 24.04 LTS
+- Ubuntu 24.04 LTS primary baseline. Ubuntu 26.04 LTS is a compatibility/validation target only.
 - Права root или sudo
 - Стабильное интернет-соединение
 - Успешный preflight для `docker-host` или `ai-stack`

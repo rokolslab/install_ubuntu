@@ -153,13 +153,25 @@ print_profile_matrix() {
 
 check_os_support() {
   if [ "$OS_NAME" != "ubuntu" ]; then
-    log_error "ОС должна быть Ubuntu Server 22.04 LTS или 24.04 LTS (обнаружено: ${OS_NAME} ${OS_VERSION})"
+    log_error "ОС должна быть Ubuntu Server 24.04 LTS primary baseline (обнаружено: ${OS_NAME} ${OS_VERSION})"
     exit 1
   fi
 
-  if [ "$OS_VERSION" != "24.04" ] && [ "$OS_VERSION" != "22.04" ]; then
-    log_warn "Рекомендуется Ubuntu 22.04 LTS или 24.04 LTS (обнаружено: $OS_VERSION)"
-  fi
+  case "$OS_VERSION" in
+    24.04)
+      log_info "Ubuntu 24.04 LTS обнаружена: primary baseline"
+      ;;
+    26.04)
+      log_warn "Ubuntu 26.04 LTS обнаружена: compatibility/validation target, not fully validated primary support"
+      ;;
+    22.04)
+      log_error "Ubuntu 22.04 LTS обнаружена: unsupported legacy; используйте Ubuntu 24.04 LTS primary baseline"
+      exit 1
+      ;;
+    *)
+      log_warn "Ubuntu $OS_VERSION не является primary baseline; Ubuntu 24.04 LTS поддерживается, Ubuntu 26.04 LTS только compatibility/validation target"
+      ;;
+  esac
 }
 
 check_critical_resources() {
