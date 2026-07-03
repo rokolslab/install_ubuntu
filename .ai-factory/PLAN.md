@@ -154,10 +154,13 @@
 2. `docs(ssh): strengthen vps recovery and hardening flows`
    - Tasks 8-14.
 
+## Verification Status
+
+- Status: ✅ Verified complete on 2026-07-03.
+- Evidence: `docs/ssh-keys.md` contains the planned platform matrix, key naming rationale, private/public key safety model, Windows OpenSSH/PowerShell commands, Windows `ssh-agent`/ACL guidance, Git Bash/WSL/PuTTY/Pageant notes, GitHub alias flow, VPS pre-hardening checklist, deploy and backup/rescue policy, reinstall recovery flow and troubleshooting sections.
+- Checks: `git diff --check` passed; `scripts/98-verify-scripts.sh` passed; targeted verification found no requirement in this plan left unchecked.
+- Residual risk: this was a documentation-only plan; live SSH behavior still depends on user environment and target VPS state.
+
 ## Next Step
 
-Для реализации выполнить:
-
-```text
-/aif-implement
-```
+План выполнен и подтверждён. Следующий естественный шаг — архивировать план через `/aif-archive`, если он больше не нужен как активный fast plan.
