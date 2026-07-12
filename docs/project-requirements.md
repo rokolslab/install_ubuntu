@@ -104,7 +104,7 @@ The change-control baseline is:
 - Do not run install scripts, privileged commands, or containers during planning or review.
 - Do not broaden scope into Supabase, public Compose override, CI, changelog, or version enforcement unless that is the approved PR goal.
 
-## Links To Related Docs
+## See Also
 
 - [Quick Start](../QUICKSTART.md)
 - [System Requirements](../requirements/system-requirements.md)

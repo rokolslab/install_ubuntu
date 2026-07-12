@@ -609,3 +609,9 @@ ssh -vvv vps-fi-01-admin
 - Не используйте один ключ для всех сценариев, если доступы можно разделить.
 - Не оставляйте старые или скомпрометированные ключи в GitHub и `authorized_keys`.
 - Не удаляйте blindly `known_hosts`, если не подтвердили причину смены host key.
+
+## See Also
+
+- [Server Security](01-server-security.md) — SSH, UFW и fail2ban baseline.
+- [Security Hardening Details](01-server-security-hardening.md) — advanced SSH hardening notes.
+- [Scripts Catalog](scripts-catalog.md) — где используется SSH key setup в profile flows.

@@ -120,14 +120,20 @@ This was a forced installation-only check requested after preflight classified t
 
 `docker-host` clean Ubuntu 24.04 VPS forced installation-only smoke check: passed.
 
-### Residual Risks
+### Docker-Host Residual Risks
 
 - The VPS remains below documented `docker-host` profile requirements. Treat this as install-script evidence, not workload-capacity evidence.
 - This run did not deploy or operate real Docker workloads beyond `hello-world`.
 - This run used root SSH access; Docker non-root group setup was not validated.
 
-### Residual Risks
+## Overall Residual Risks
 
 - `ai-stack` release-readiness evidence is still missing and needs a VPS/VM with at least 4 GiB RAM and 50 GiB disk available.
 - This run used root SSH access; disabling root/password login requires a separate validated non-root key-access setup.
 - This run did not validate Ubuntu 26.04 compatibility.
+
+## See Also
+
+- [Quality Checks](12-quality-checks.md) — commands and clean VM evidence workflow.
+- [Ready Rules](14-ready-rules.md) — readiness gates and stop conditions.
+- [Acceptance Criteria](acceptance-criteria.md) — profile-level smoke-test expectations.

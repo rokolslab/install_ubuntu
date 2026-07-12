@@ -6,7 +6,7 @@
 
 ## Назначение
 
-- Подготовить чистый Ubuntu Server 22.04 LTS или 24.04 LTS к выбранному сценарию: `minimal`, `proxy`, `docker-host`, `web` или `ai-stack`.
+- Подготовить чистый Ubuntu Server 24.04 LTS к выбранному сценарию: `minimal`, `proxy`, `docker-host`, `web` или `ai-stack`; отдельно валидировать Ubuntu 26.04 LTS как compatibility target.
 - Дать повторяемый порядок установки через документацию, shell scripts и Docker Compose.
 - Снизить риск небезопасных production-дефолтов за счёт обязательных secrets, локальных bind-address для внутренних сервисов и readiness checks.
 - Поддержать маленькие VPS, proxy/VPN base, Docker host, dedicated server, internal lab и client deployment sandbox.
@@ -14,7 +14,7 @@
 ## Обнаруженный стек
 
 - **Язык:** Bash.
-- **Платформа:** Ubuntu Server 22.04 LTS / 24.04 LTS.
+- **Платформа:** Ubuntu Server 24.04 LTS primary baseline; Ubuntu 26.04 LTS compatibility/validation target.
 - **Контейнеризация:** Docker Engine, Docker Compose.
 - **База данных:** PostgreSQL/Supabase, pgvector, PgBouncer.
 - **Очереди и cache:** Redis.

@@ -38,16 +38,21 @@ sudo apt install -y \
 
 ```bash
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc > /dev/null
+sudo chmod a+r /etc/apt/keyrings/docker.asc
 ```
 
 ## Шаг 4: Добавление репозитория Docker
 
 ```bash
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+cat <<EOF | sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(lsb_release -cs)
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
 ```
 
 ## Шаг 5: Установка Docker Engine и Docker Compose
@@ -214,11 +219,13 @@ newgrp docker
 sudo apt clean
 sudo apt update
 
-# Проверьте правильность ключа
-sudo apt-key list | grep Docker
+# Проверьте, что keyring и source file существуют
+test -r /etc/apt/keyrings/docker.asc
+test -r /etc/apt/sources.list.d/docker.sources
 
 # Переустановите ключ
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc > /dev/null
+sudo chmod a+r /etc/apt/keyrings/docker.asc
 ```
 
 ## Обновление Docker

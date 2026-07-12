@@ -9,7 +9,7 @@
 ## Технологический стек
 
 - **Язык:** Bash
-- **Платформа:** Ubuntu Server 22.04 LTS / 24.04 LTS
+- **Платформа:** Ubuntu Server 24.04 LTS primary baseline; Ubuntu 26.04 LTS compatibility/validation target
 - **Контейнеризация:** Docker, Docker Compose
 - **База данных:** PostgreSQL/Supabase
 - **Сервисы:** Redis, n8n, PgBouncer, Nginx, Prometheus, Grafana
@@ -52,6 +52,9 @@
 |----------|------|----------|
 | README | `README.md` | Главный обзор проекта. |
 | Quick Start | `QUICKSTART.md` | Profile-aware быстрый старт. |
+| Project Requirements | `docs/project-requirements.md` | Scope, baseline и governance. |
+| Version Policy | `docs/version-policy.md` | Ubuntu, Docker и image version rules. |
+| Acceptance Criteria | `docs/acceptance-criteria.md` | Profile-level readiness expectations. |
 | System Requirements | `requirements/system-requirements.md` | Требования по профилям. |
 | VPS Profiles | `docs/profiles.md` | Профили minimal/proxy/docker-host/web/ai-stack. |
 | Server Security | `docs/01-server-security.md` | SSH, UFW и fail2ban. |

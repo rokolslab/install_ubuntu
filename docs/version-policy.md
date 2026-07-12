@@ -69,3 +69,9 @@ For every pinned app or container version:
 - Security fixes may prioritize speed, but still require review of changed versions and affected services.
 - Keep emergency updates narrow: version changes only unless a mitigation requires more.
 - After the emergency change, capture follow-up work for smoke tests, rollback validation, and release notes.
+
+## See Also
+
+- [Project Requirements](project-requirements.md) — scope and governance baseline.
+- [Acceptance Criteria](acceptance-criteria.md) — profile-level readiness gates.
+- [Quality Checks](12-quality-checks.md) — local and CI validation commands.

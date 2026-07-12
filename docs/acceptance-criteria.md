@@ -73,7 +73,7 @@ This document defines profile-level acceptance criteria. It does not replace [QU
 - Clean Ubuntu 24.04 VM smoke-test expectations: selected `ai-stack` services start from generated local secrets and pass ready checks without public direct Compose exposure. Full Supabase platform services are not part of the current implemented stack.
 - Ubuntu 26.04 compatibility validation expectations: validate Docker, Compose, service images, health checks, and backup/restore behavior before claiming compatibility.
 
-## Related Docs
+## See Also
 
 - [Scripts Order](15-scripts-order.md)
 - [Quality Checks](12-quality-checks.md)
