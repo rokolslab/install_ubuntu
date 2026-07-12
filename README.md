@@ -115,6 +115,7 @@ For the full installation path, use [QUICKSTART.md](QUICKSTART.md). To understan
 | [Backups](docs/10-backup-restore.md) | PostgreSQL backup and restore |
 | [Troubleshooting](docs/11-troubleshooting.md) | Common failure modes and fixes |
 | [Quality Checks](docs/12-quality-checks.md) | Validation and readiness checks |
+| [Ubuntu 24.04 Smoke Test Evidence](docs/16-ubuntu-24-04-smoke-test-evidence.md) | Sanitized clean VM/VPS smoke-test results |
 | [Secrets](docs/13-secrets.md) | Passwords, `.env` and rotation |
 | [Ready Rules](docs/14-ready-rules.md) | Installation readiness gates |
 | [Scripts Order](docs/15-scripts-order.md) | Canonical script execution sequence |

@@ -76,6 +76,7 @@
 | Secrets | `docs/13-secrets.md` | `.env` и rotation. |
 | Ready Rules | `docs/14-ready-rules.md` | Installation gates. |
 | Scripts Order | `docs/15-scripts-order.md` | Канонический порядок запуска скриптов. |
+| Ubuntu 24.04 Smoke Test Evidence | `docs/16-ubuntu-24-04-smoke-test-evidence.md` | Sanitized clean VM/VPS smoke-test evidence. |
 
 ## AI Context Files
 

@@ -74,8 +74,10 @@ rm -f /etc/apt/sources.list.d/docker*.list.save
 rm -f /etc/apt/sources.list.d/docker.sources
 # Находим и очищаем все файлы, содержащие упоминания Docker
 while IFS= read -r docker_source_file; do
-    rm -f "$docker_source_file"
-done < <(find /etc/apt/sources.list.d/ -type f \( -name "*.list" -o -name "*.sources" \) -exec grep -l "download\.docker\.com" {} + 2>/dev/null) || true
+    if grep -q "download\.docker\.com" "$docker_source_file"; then
+        rm -f "$docker_source_file"
+    fi
+done < <(find /etc/apt/sources.list.d/ -type f \( -name "*.list" -o -name "*.sources" \) -print 2>/dev/null || true)
 # Удаляем записи Docker из основного файла sources.list (если есть)
 sed -i '/download\.docker\.com/d' /etc/apt/sources.list 2>/dev/null || true
 # Удаляем старые ключевые файлы

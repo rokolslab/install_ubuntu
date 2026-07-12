@@ -11,6 +11,7 @@ This document defines profile-level acceptance criteria. It does not replace [QU
 - Ubuntu 24.04 LTS is the clean VM smoke-test baseline.
 - Ubuntu 26.04 LTS compatibility must be validated separately before compatibility claims.
 - Preflight must be run for the selected profile before install steps.
+- If preflight classifies the selected profile as `NO`, that install flow must not be continued on that host and must be documented as not run.
 - Ready checks must be run for the same profile after install steps.
 - Risky changes need rollback or recovery notes.
 - Internal services must remain closed unless a documented public access path exists.
@@ -24,6 +25,7 @@ This document defines profile-level acceptance criteria. It does not replace [QU
 - Verification commands: profile ready check, SSH reconnect test, firewall status review, fail2ban status review.
 - Rollback/recovery expectations: keep a working SSH session open during hardening and document how to restore SSH access if key or firewall settings fail.
 - Clean Ubuntu 24.04 VM smoke-test expectations: preflight and ready checks pass for `minimal` without Docker or `.env` requirements.
+- Current clean Ubuntu 24.04 evidence: passed on 2026-07-12; see [Ubuntu 24.04 Smoke Test Evidence](16-ubuntu-24-04-smoke-test-evidence.md).
 - Ubuntu 26.04 compatibility validation expectations: confirm package names, SSH, UFW, fail2ban, and unattended-upgrades behavior before claiming compatibility.
 
 ## proxy
@@ -46,6 +48,7 @@ This document defines profile-level acceptance criteria. It does not replace [QU
 - Verification commands: profile ready check, `docker --version`, `docker compose version`, and Docker service status.
 - Rollback/recovery expectations: document how to stop Docker workloads and remove or disable Docker if installation causes system issues.
 - Clean Ubuntu 24.04 VM smoke-test expectations: Docker install and ready checks pass without deploying the AI stack.
+- Current clean Ubuntu 24.04 evidence: forced installation-only check passed on the 2026-07-12 `fi-1` VPS after operator override; preflight still classified `docker-host` as `NO` due insufficient resources, so this does not validate workload capacity.
 - Ubuntu 26.04 compatibility validation expectations: validate the official Docker stable apt repository flow before claiming compatibility.
 
 ## web

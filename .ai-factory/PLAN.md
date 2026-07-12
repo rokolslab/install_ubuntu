@@ -1,163 +1,122 @@
-# План: аудит и усиление `docs/ssh-keys.md`
+# План: Clean Ubuntu 24.04 VM smoke-test evidence
 
-Дата создания: 2026-06-07
+Дата создания: 2026-07-03
 Режим: fast
 Ветка: текущая `main`
 
 ## Settings
 
-- Testing: docs checks включены.
-- Logging: не требуется runtime logging; для каждой задачи фиксировать проверочные заметки в итоговом diff/commit summary без вывода secrets.
-- Docs: mandatory docs checkpoint после реализации.
-- Scope: только документация по SSH-ключам и связанные cross-links, без изменения поведения scripts.
+- Testing: yes — включить локальные static gates и documented smoke-test evidence checks.
+- Logging: standard — для каждого VM-прогона фиксировать команды, timestamp, профиль, результат и краткий вывод без secrets.
+- Docs: yes — mandatory docs checkpoint после сбора evidence.
+- Scope: только clean Ubuntu 24.04 VM smoke-test evidence и связанные статусные updates; не менять install logic без отдельного approved plan.
 
 ## Цель
 
-Провести аудит и углубить `docs/ssh-keys.md`, чтобы документ был безопасным и понятным для пользователей Linux/macOS, Windows PowerShell/OpenSSH, Git Bash/WSL и PuTTY/Pageant. Документ должен снижать риск потери SSH-доступа перед hardening, объяснять различия между GitHub keys, VPS/root/admin keys, deploy keys и backup/rescue keys, показывать Windows-совместимые команды там, где текущие Unix-команды неприменимы, и покрывать сценарий переустановленного VPS со старыми SSH references на клиенте.
+Снять главный release blocker: получить и задокументировать проверяемые результаты smoke-test на чистой Ubuntu 24.04 LTS VM для поддерживаемых profile flows. План не должен создавать иллюзию release readiness, если часть профилей не прогнана или прогнана с ограничениями.
 
-## Контекст аудита
+## Контекст
 
-- Текущий документ в основном Unix-oriented: `~/.ssh`, `chmod`, `cat`, `ssh-copy-id`, Bash snippets.
-- Windows-specific guidance отсутствует: PowerShell paths, Windows OpenSSH, `ssh-agent` service, ACL permissions, Git Bash caveats, PuTTY/Pageant.
-- Важная связь с hardening недообъяснена: `scripts/security/ssh-hardening.sh` безопасно отключает root/password login только при проверенном non-root key access.
-- `scripts/01-setup-ssh-keys.sh` Bash-oriented; это нужно явно указать для Windows-клиентов.
-- Пользователю нужно явно объяснить смысл составных частей имени ключа: `purpose`, `account-or-server`, `user/role`, `device`.
-- Частый operational case: VPS переустановлен, host key изменился, в `known_hosts`/SSH config остались старые записи, а пользователь создал новый client key.
+- `PLAN.md` помечает `Clean Ubuntu 24.04 VM smoke-test evidence` как planned blocker.
+- `docs/acceptance-criteria.md` задаёт profile-level критерии для `minimal`, `proxy`, `docker-host`, `web`, `ai-stack`.
+- `docs/12-quality-checks.md` содержит общий checklist, но не хранит конкретные evidence snapshots.
+- `docs/14-ready-rules.md` задаёт ready gates, но сейчас ориентирован в первую очередь на `ai-stack` examples.
+- Нельзя запускать privileged/install scripts в этой agent-сессии без отдельного явного runtime approval и подходящей VM.
 
 ## Tasks
 
-### Phase 1: Audit Structure And Safety Gaps
+### Phase 1: Evidence Design
 
-1. [x] Зафиксировать целевую структуру `docs/ssh-keys.md` перед правкой.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: обновлённый порядок разделов: overview, platform matrix, naming/comment standards, Linux/macOS, Windows OpenSSH/PowerShell, Git Bash/WSL, PuTTY/Pageant, GitHub, VPS/root/admin, deploy, backup/rescue, reinstall/recovery scenarios, pre-hardening checklist, troubleshooting, forbidden actions.
-   - Expected behavior: документ остаётся self-contained и не превращает README в manual.
-   - Logging/reporting: в итоговом summary отметить, какие разделы были переставлены или добавлены; secrets не выводить.
+1. [x] Зафиксировать формат evidence-документа для Ubuntu 24.04 VM smoke tests.
+   - Files: создать `docs/16-ubuntu-24-04-smoke-test-evidence.md`, при необходимости обновить `README.md` и `AGENTS.md` documentation map.
+   - Deliverable: шаблон с полями: date, VM provider/type, Ubuntu version, kernel, resources, git commit, profile, commands run, pass/fail result, redacted notes, residual risks.
+   - Expected behavior: evidence можно проверить без доступа к secrets и без raw `.env` dumps.
+   - Logging/reporting: фиксировать только команды, exit status и sanitized observations; не выводить passwords, tokens, private keys, contents of `docker-compose/.env`.
    - Dependencies: нет.
 
-2. [x] Углубить объяснение составных частей имени SSH-ключа.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: добавить понятное пояснение формата имени, например `<purpose>_<target>_<role-or-user>_<device>` или текущего короткого `<purpose>_<account-or-server>_<device>`, с расшифровкой `purpose`, `account-or-server/target`, `role/user`, `device`; показать хорошие и плохие примеры.
-   - Expected behavior: пользователь понимает, что имя ключа отвечает на вопросы “для чего?”, “куда/к какому аккаунту?”, “какая роль?”, “с какого устройства?”, и может безопасно найти ключи для ротации после потери устройства или смены VPS.
-   - Logging/reporting: в summary отметить добавленную naming rationale; не использовать реальные email, IP или private key material.
+2. [x] Определить mandatory и optional profile matrix для первого smoke-test PR.
+   - Files: `docs/16-ubuntu-24-04-smoke-test-evidence.md`, `docs/12-quality-checks.md`, `docs/14-ready-rules.md`.
+   - Deliverable: явно разделить обязательные для первого PR профили (`minimal`, `docker-host`) и resource-dependent профиль (`ai-stack`), если VM подходит по требованиям.
+   - Expected behavior: если `ai-stack` не прогнан из-за ресурсов или отсутствия VM, документ фиксирует blocker/skip reason и не меняет release readiness на completed.
+   - Logging/reporting: записывать причину skip как факт, без домыслов и без production claims.
    - Dependencies: Task 1.
 
-3. [x] Усилить safety model для private/public keys.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: добавить объяснение, где генерируется private key, куда копируется только `.pub`, как отличать private/public key, почему нельзя хранить private key на VPS/GitHub/в репозитории.
-   - Expected behavior: пользователь понимает, что команды чтения/копирования должны использовать только `.pub`, кроме локального использования private key в `ssh -i`.
-   - Logging/reporting: в summary отметить добавленные safety warnings; реальные ключи или fingerprint values не приводить.
-   - Dependencies: Task 1.
+### Phase 2: Clean VM Execution Evidence
 
-### Phase 2: Add Windows Client Coverage
+3. [x] Собрать clean VM evidence для `minimal` profile.
+   - Files: `docs/16-ubuntu-24-04-smoke-test-evidence.md`.
+   - Deliverable: выполнить на чистой Ubuntu 24.04 LTS VM documented flow: preflight, SSH key setup path note, security baseline, ready checks; зафиксировать результат.
+   - Expected behavior: `minimal` flow не требует Docker, compose или `.env`; ready checks проходят либо failure документирован с причиной и follow-up.
+   - Logging/reporting: сохранить sanitized command transcript summary, timestamps, profile name, exit status; не включать IP, private keys, generated secrets или полный firewall dump с чувствительными адресами.
+   - Dependencies: Tasks 1-2.
 
-4. [x] Добавить раздел Windows OpenSSH и PowerShell.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: команды для `ssh-keygen`, просмотра `.pub` через `Get-Content`, подключения через `ssh -i`, путь `$env:USERPROFILE\.ssh`, config path `C:\Users\<User>\.ssh\config`.
-   - Expected behavior: Windows-пользователь может выполнить базовый GitHub/VPS flow без Git Bash и без Unix-only команд.
-   - Logging/reporting: в summary перечислить Windows commands, которые были добавлены; не выводить private key contents.
-   - Dependencies: Task 1.
+4. [x] Собрать clean VM evidence для `docker-host` profile.
+   - Files: `docs/16-ubuntu-24-04-smoke-test-evidence.md`.
+   - Deliverable: выполнить на чистой Ubuntu 24.04 LTS VM documented flow: preflight, security baseline, Docker install, ready checks, `docker --version`, `docker compose version`.
+   - Current status 2026-07-12: forced installation-only check passed on `fi-1` after operator override; preflight still classified profile as `NO` because RAM/disk are below requirements.
+   - Expected behavior: Docker Engine и Compose plugin устанавливаются через documented path; ready checks проходят либо failure документирован с причиной и follow-up.
+   - Logging/reporting: фиксировать versions и exit status; не запускать unrelated workloads; не публиковать Docker API наружу.
+   - Dependencies: Tasks 1-2.
 
-5. [x] Добавить Windows `ssh-agent` и permissions/ACL guidance.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: команды `Get-Service ssh-agent`, `Set-Service ssh-agent -StartupType Automatic`, `Start-Service ssh-agent`, `ssh-add`, `ssh-add -l`; предупреждение про `UNPROTECTED PRIVATE KEY FILE` и ограничение доступа к private key текущим пользователем.
-   - Expected behavior: документ объясняет, почему Unix `chmod` не равен Windows ACL и что делать при ошибках permissions.
-   - Logging/reporting: в summary отметить, что ACL guidance добавлен как безопасная рекомендация без агрессивных destructive команд.
-   - Dependencies: Task 4.
+5. [x] Собрать или явно отложить clean VM evidence для `ai-stack` profile.
+   - Files: `docs/16-ubuntu-24-04-smoke-test-evidence.md`, возможно `PLAN.md`.
+   - Deliverable: если VM соответствует `ai-stack` requirements, выполнить documented flow с generated local secrets, compose config/up, ready checks и service smoke checks. Если VM не соответствует, зафиксировать `not run` с ресурсной причиной и оставить blocker открытым.
+   - Current status 2026-07-12: not run on `fi-1`; VPS is below `ai-stack` requirements.
+   - Expected behavior: `ai-stack` не получает completed/release-ready статус без фактического успешного прогона; public direct Compose exposure не используется.
+   - Logging/reporting: не выводить `.env`; фиксировать только sanitized service status, health summary и failures.
+   - Dependencies: Tasks 1-2, ideally after Task 4.
 
-6. [x] Добавить альтернативы `ssh-copy-id` для Windows.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: объяснить, что `ssh-copy-id` обычно отсутствует в native PowerShell; дать безопасный вариант ручного добавления `.pub` в `authorized_keys` и PowerShell pipeline/SSH fallback, если подходит.
-   - Expected behavior: Windows-пользователь может добавить публичный ключ на VPS без установки дополнительных Unix tools.
-   - Logging/reporting: в summary отметить выбранный способ и предупреждение о duplicate keys/ownership.
-   - Dependencies: Task 4.
+### Phase 3: Docs And Status Sync
 
-7. [x] Добавить Git Bash, WSL и PuTTY/Pageant notes.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: коротко описать, когда использовать Git Bash/WSL, что `~/.ssh` в Git Bash мапится на Windows home, что PuTTY использует `.ppk`, PuTTYgen/Pageant применимы для PuTTY/Plink workflows, а Git for Windows обычно проще с OpenSSH keys.
-   - Expected behavior: документ помогает выбрать инструмент, не смешивая incompatible key formats.
-   - Logging/reporting: в summary отметить ограничения Git Bash/WSL/PuTTY; не рекомендовать конвертацию private key без passphrase.
-   - Dependencies: Task 4.
+6. [x] Синхронизировать quality docs и acceptance criteria по фактам smoke-test.
+   - Files: `docs/12-quality-checks.md`, `docs/14-ready-rules.md`, `docs/acceptance-criteria.md`, `docs/16-ubuntu-24-04-smoke-test-evidence.md`, возможно `README.md`/`AGENTS.md` links.
+   - Deliverable: docs ссылаются на evidence document; ready rules ясно разделяют local static checks, profile ready checks и clean VM evidence.
+   - Expected behavior: beginner-facing docs остаются понятными; README не превращается в длинный manual.
+   - Logging/reporting: summary перечисляет только изменённые docs и подтверждённые profile results.
+   - Dependencies: Tasks 3-5.
 
-### Phase 3: Strengthen Server, GitHub And Recovery Flows
+7. [x] Обновить `PLAN.md` только по подтверждённым результатам.
+   - Files: `PLAN.md`.
+   - Deliverable: изменить статус `Clean Ubuntu 24.04 VM smoke-test evidence` и related sections только для реально пройденных профилей; оставить blockers для непройденных или failed профилей.
+   - Expected behavior: нет overclaim release readiness; статус отражает evidence, а не намерения.
+   - Logging/reporting: в итоговом summary указать, какие статусы изменены и на какой evidence они ссылаются.
+   - Dependencies: Tasks 3-6.
 
-8. [x] Углубить GitHub key and alias flow для разных платформ.
-   - Files: `docs/ssh-keys.md`.
-   - Deliverable: сохранить canonical `RokolsLab` examples, добавить проверку `ssh -T git@github.com` / alias из PowerShell и Git Bash, объяснить `Host github-rokolslab` и `git remote set-url`.
-   - Expected behavior: пользователь понимает разницу между GitHub account SSH key и repository deploy key.
-   - Logging/reporting: в summary отметить alias/remote examples; не использовать реальные email/token values.
-   - Dependencies: Tasks 4, 7.
+### Phase 4: Verification
 
-9. [x] Добавить полноценный VPS/root/admin pre-hardening flow.
-   - Files: `docs/ssh-keys.md`, возможно cross-link на `docs/01-server-security.md` и `docs/01-server-security-hardening.md`.
-   - Deliverable: пошагово описать root key, создание non-root admin/deploy user, добавление public key, проверку второго SSH-сеанса, проверку `sudo`, сохранение текущей сессии открытой перед hardening.
-   - Expected behavior: пользователь не запускает SSH hardening, пока не проверил non-root key access и recovery path.
-   - Logging/reporting: в summary отметить added lockout-prevention checklist; не включать реальные server IP.
-   - Dependencies: Task 3.
-
-10. [x] Добавить сценарий “VPS переустановлен или пересоздан”.
-    - Files: `docs/ssh-keys.md`.
-    - Deliverable: объяснить разницу между старым client private key, новым client key и server host key; описать, что после переустановки VPS часто нужно удалить старый host key из `known_hosts`, обновить SSH config aliases при смене IP/user/key path, заново добавить новый `.pub` в `authorized_keys`, и удалить/закомментировать ссылки на старый private key.
-    - Expected behavior: пользователь понимает, что warning `REMOTE HOST IDENTIFICATION HAS CHANGED` нельзя игнорировать вслепую; сначала надо подтвердить, что VPS действительно переустановлен/пересоздан, затем очистить старую запись и проверить новый fingerprint.
-    - Linux/macOS/Git Bash commands: включить `ssh-keygen -R SERVER_IP`, `ssh-keygen -R '[SERVER_IP]:PORT'`, проверку/редактирование `~/.ssh/config`, пример замены `IdentityFile ~/.ssh/old_key` на новый key path, подключение `ssh -i ~/.ssh/new_key user@SERVER_IP`.
-    - Windows PowerShell commands: включить `ssh-keygen -R SERVER_IP`, `ssh-keygen -R '[SERVER_IP]:PORT'`, путь `$env:USERPROFILE\.ssh\known_hosts`, редактирование `$env:USERPROFILE\.ssh\config`, подключение `ssh -i "$env:USERPROFILE\.ssh\new_key" user@SERVER_IP`.
-    - Logging/reporting: в summary отметить добавленный reinstall recovery flow; не включать реальные IP, fingerprints или private key contents.
-    - Dependencies: Tasks 4, 6, 9.
-
-11. [x] Уточнить deploy и backup/rescue key policy.
-    - Files: `docs/ssh-keys.md`.
-    - Deliverable: описать ограничения deploy keys, когда допустима empty passphrase, где хранить backup/rescue key, как ротировать и удалять скомпрометированные keys из GitHub/VPS.
-    - Expected behavior: пользователь отделяет human admin access от automation/deploy access.
-    - Logging/reporting: в summary отметить policy changes; не добавлять реальные secrets or credentials.
-    - Dependencies: Task 3.
-
-### Phase 4: Troubleshooting And Verification
-
-12. [x] Расширить troubleshooting для Windows/Linux/macOS.
-    - Files: `docs/ssh-keys.md`.
-    - Deliverable: добавить симптомы и проверки: `Permission denied (publickey)`, wrong key selected, bad permissions/ACL, agent has no identities, GitHub alias mismatch, changed SSH port, UFW/fail2ban implications, stale `known_hosts` after VPS reinstall, stale `IdentityFile` in SSH config.
-    - Expected behavior: пользователь получает route-to-fix без небезопасных советов вроде копирования private key на сервер или бездумного удаления host key без проверки причины.
-    - Logging/reporting: в summary перечислить troubleshooting categories; не предлагать выводить private key.
-    - Dependencies: Tasks 5, 6, 9, 10.
-
-13. [x] Проверить cross-links и согласованность с project scripts.
-    - Files: `docs/ssh-keys.md`, `docs/01-server-security.md`, `docs/01-server-security-hardening.md`, `docs/scripts-catalog.md` если понадобятся ссылки.
-    - Deliverable: ссылки на relevant docs/scripts работают; документ честно говорит, что `scripts/01-setup-ssh-keys.sh` Bash-oriented и лучше подходит для Linux/macOS/WSL/Git Bash, не native PowerShell.
-    - Expected behavior: документация не обещает Windows support в Bash script, если его нет в коде.
-    - Logging/reporting: в summary отметить changed/added cross-links; никаких secrets.
-    - Dependencies: Tasks 4-12.
-
-14. [x] Провести mandatory docs checkpoint.
-    - Files: `docs/ssh-keys.md` и любые затронутые docs.
-    - Deliverable: финальная проверка readability, technical accuracy, internal links, canonical `RokolsLab` references, отсутствие secrets, отсутствие устаревших команд.
-    - Expected behavior: `git diff --check` проходит; targeted grep не находит старые owner spellings или private-key anti-patterns.
-    - Logging/reporting: в финальном ответе дать компактную таблицу проверок и residual risks.
-    - Dependencies: Tasks 1-13.
+8. [x] Запустить локальные quality gates после docs/status updates.
+   - Files: changed docs and plan files.
+   - Deliverable: `git diff --check`, `scripts/98-verify-scripts.sh`, `docker compose --env-file env.example -f docker-compose.yml -f docker-compose.monitoring.yml config`, targeted guards for `latest`, public override references and tracked secret-like files.
+   - Expected behavior: static gates проходят; если gate падает, task остаётся incomplete до исправления.
+   - Logging/reporting: фиксировать команды и pass/fail без secrets; полный compose output не должен раскрывать real `.env`.
+   - Dependencies: Tasks 6-7.
 
 ## Acceptance Criteria
 
-- `docs/ssh-keys.md` содержит отдельные Windows OpenSSH/PowerShell instructions.
-- Документ объясняет Git Bash/WSL/PuTTY/Pageant tradeoffs без смешивания key formats.
-- Есть безопасные альтернативы `ssh-copy-id` для Windows.
-- Есть объяснение составных частей имени ключа и практическая причина каждой части.
-- Есть сценарий “VPS переустановлен/пересоздан”: очистка stale `known_hosts`, обновление SSH config/`IdentityFile`, добавление нового `.pub` на сервер, команды для Linux/macOS/Git Bash и Windows PowerShell.
-- Есть pre-hardening checklist с non-root key access, второй SSH-сессией и `sudo` verification.
-- GitHub aliases и repository URLs используют canonical `RokolsLab` / `github-rokolslab`.
-- Документ не выводит и не просит вставлять private key contents.
-- Документ предупреждает не игнорировать `REMOTE HOST IDENTIFICATION HAS CHANGED` без подтверждения переустановки/смены host key.
-- После реализации проходит `git diff --check` и targeted grep по stale owner spellings.
+- Есть `docs/16-ubuntu-24-04-smoke-test-evidence.md` с sanitized evidence format и фактическими результатами или explicit blockers.
+- `minimal` clean Ubuntu 24.04 VM result зафиксирован как pass/fail с командами и exit status.
+- `docker-host` clean Ubuntu 24.04 VM result зафиксирован как pass/fail либо explicit not-run blocker с командами и exit status.
+- `ai-stack` либо успешно прогнан на подходящей VM, либо явно оставлен blocker с причиной; completed status не ставится без успешного прогона.
+- `docs/12-quality-checks.md`, `docs/14-ready-rules.md` и `docs/acceptance-criteria.md` не противоречат evidence.
+- `PLAN.md` обновлён только по подтверждённым фактам.
+- Secrets, private keys и generated `.env` contents не попали в docs, logs или git.
+- Static gates после изменений проходят.
 
 ## Commit Plan
 
-1. `docs(ssh): explain key naming and Windows setup`
-   - Tasks 1-7.
-2. `docs(ssh): strengthen vps recovery and hardening flows`
-   - Tasks 8-14.
+1. `docs: add ubuntu 24.04 smoke test evidence`
+   - Tasks 1-5.
+2. `docs: sync smoke test readiness status`
+   - Tasks 6-8.
 
 ## Next Step
 
-Для реализации выполнить:
+Нужна VM/VPS большего размера для оставшегося `docker-host` evidence. Минимум: 1024MB RAM и 10GB disk free; практически лучше 2GB RAM и 15GB+ disk.
 
-```text
-/aif-implement
-```
+## Verification Status
+
+- Status: partially complete on 2026-07-12.
+- Passed evidence: `minimal` clean Ubuntu 24.04 VPS smoke test.
+- Remaining blocker: `ai-stack` was not run on `fi-1` because preflight classified the host as below requirements. `docker-host` passed only as a forced installation-only check and does not validate workload capacity.
+- Local checks: `git diff --check`, `scripts/98-verify-scripts.sh`, Docker Compose base config, Docker Compose monitoring config, latest-image guard, removed public override guard and tracked secret-file guard passed.
+- Note: `rg` is not installed locally, so targeted guards were run with `grep` matching the CI workflow.

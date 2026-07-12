@@ -59,8 +59,13 @@ curl -f http://localhost:3000/api/health
 
 ## 5. Проверка на чистой VM
 1. Разверните чистую VM Ubuntu 24.04 LTS.
-2. Пройдите все шаги из `QUICKSTART.md`.
-3. Повторите Smoke‑тесты.
+2. Запустите preflight для выбранного профиля.
+3. Продолжайте install flow только если preflight не классифицирует профиль как `NO`.
+4. Пройдите шаги из `QUICKSTART.md` для выбранного профиля.
+5. Запустите matching ready checks для того же профиля.
+6. Зафиксируйте sanitized результат в [Ubuntu 24.04 Smoke Test Evidence](16-ubuntu-24-04-smoke-test-evidence.md).
+
+Текущий evidence checkpoint: `minimal` прошёл на clean Ubuntu 24.04 VPS 2026-07-12; `docker-host` installation-only check прошёл на VPS ниже требований после operator override; `ai-stack` требует более крупную VM/VPS и не считается пройденным.
 
 ## Источники
 - https://github.com/koalaman/shellcheck
@@ -71,3 +76,4 @@ curl -f http://localhost:3000/api/health
 - [Ready Rules](14-ready-rules.md) — gate-критерии перед production.
 - [Troubleshooting](11-troubleshooting.md) — что смотреть при падении проверок.
 - [Scripts Order](15-scripts-order.md) — где запускать ready checks в install flow.
+- [Ubuntu 24.04 Smoke Test Evidence](16-ubuntu-24-04-smoke-test-evidence.md) — результаты clean VM/VPS smoke tests.

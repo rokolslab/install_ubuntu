@@ -20,6 +20,7 @@ sudo bash scripts/99-ready-checks.sh --profile ai-stack
 - `docker compose config` возвращает ошибку
 - `scripts/99-ready-checks.sh --profile <profile>` завершился с ошибкой
 - сервисы `supabase_db`, `pgbouncer`, `redis`, `n8n` не запущены
+- `scripts/00-preflight-check.sh --profile <profile>` классифицирует выбранный профиль как `NO`
 
 ## 3. Минимальный протокол
 1. Preflight → OK
@@ -32,6 +33,11 @@ sudo bash scripts/99-ready-checks.sh --profile ai-stack
 2. Фиксируйте шаги в журнале (команды, время, результат).
 3. Храните актуальные бэкапы перед изменениями.
 
+## 5. Release Evidence
+Перед release readiness claims нужен clean Ubuntu 24.04 VM/VPS evidence для соответствующих профилей.
+
+Текущий статус хранится в [Ubuntu 24.04 Smoke Test Evidence](16-ubuntu-24-04-smoke-test-evidence.md): `minimal` пройден 2026-07-12, `docker-host` installation-only check пройден после operator override на VPS ниже требований, `ai-stack` остаётся открытым до запуска на VM/VPS с подходящими ресурсами.
+
 ## Источники
 - https://docs.docker.com/compose/reference/config/
 
@@ -40,3 +46,4 @@ sudo bash scripts/99-ready-checks.sh --profile ai-stack
 - [Quality Checks](12-quality-checks.md) — команды для ручной проверки.
 - [Secrets](13-secrets.md) — обязательные секреты перед запуском.
 - [Scripts Order](15-scripts-order.md) — когда запускать ready gate.
+- [Ubuntu 24.04 Smoke Test Evidence](16-ubuntu-24-04-smoke-test-evidence.md) — clean VM/VPS evidence.

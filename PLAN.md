@@ -15,22 +15,22 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 
 | Phase | Status | Notes |
 |---|---|---|
-| Secrets safety PR | ✅ Completed | Committed as `89ab2bb fix: harden generated secrets handling`. |
-| Project governance baseline | 🔄 Current | Add requirements, version policy, acceptance criteria, and roadmap links. |
+| Secrets safety PR | ✅ Completed | Confirmed in git history as `74eaeda fix: harden generated secrets handling`. |
+| Project governance baseline | ✅ Completed | `docs/project-requirements.md`, `docs/version-policy.md`, `docs/acceptance-criteria.md` and README links are present; confirmed in git history as `106de4a docs: add project governance baseline`. |
 | Ubuntu 26.04 compatibility validation | ⏳ Planned | Validate packages, scripts, Docker, Compose and profile ready checks before compatibility claims. |
-| Supabase scope clarity | 🔄 Current | Narrow docs-only scope: current support is PostgreSQL with selected Supabase-related components; Full Supabase implementation is not approved and deferred. |
-| Public Compose override correctness | 🔄 Current | Remove unsafe direct Compose exposure docs/file; keep SSH tunnel and Nginx/reverse proxy as public access paths. |
-| Version policy enforcement | ⏳ Planned | Align package/image handling with `docs/version-policy.md`. |
-| CI/quality gates | ⏳ Planned | Add automated syntax, lint and documentation checks in a separate PR. |
-| Clean Ubuntu 24.04 VM smoke-test evidence | ⏳ Planned | Capture clean VM evidence for supported profile flows before release readiness claims. |
+| Supabase scope clarity | ✅ Completed | Docs now state current scope as PostgreSQL with selected Supabase-related components; Full Supabase is deferred. Confirmed in `docs/03-supabase.md` and `docs/project-requirements.md`. |
+| Public Compose override correctness | ✅ Completed | Unsafe public override references/files are absent; public access path remains SSH tunnel or reviewed Nginx/reverse proxy. CI guard covers removed public override references. |
+| Version policy enforcement | 🔄 Current | Compose images use explicit tags and CI guards against `latest`; broader package/version enforcement remains future work. |
+| CI/quality gates | ✅ Completed | `.github/workflows/quality.yml` runs whitespace, Bash syntax, ShellCheck, compose config, `latest` guard, public override guard and tracked secret-file guard. Local verification passed on 2026-07-03. |
+| Clean Ubuntu 24.04 VM smoke-test evidence | 🔄 Current | `minimal` passed on clean Ubuntu 24.04 VPS on 2026-07-12; `docker-host` forced installation-only check also passed on the same below-requirements VPS; `ai-stack` still needs a larger VM/VPS. See `docs/16-ubuntu-24-04-smoke-test-evidence.md`. |
 | Changelog/release readiness | ⏳ Planned | Decide changelog/release notes format and update process. |
-| ai-factory rules proposal/review | ⏳ Planned | Review project rules separately; do not track `.ai-factory.json` or `.opencode/` without explicit approval. |
+| ai-factory rules proposal/review | ✅ Completed | `.ai-factory/RULES.md` and `.ai-factory/rules/base.md` are present; `.ai-factory.json`, `.opencode/` and `.ai-factory/plans/` are ignored. |
 
 ---
 
 # План приведения проекта к лучшим практикам
 
-> **Последняя проверка:** 2026-02-03
+> **Последняя проверка:** 2026-07-03
 
 ## 1. Цели и критерии готовности
 1. ✅ Зафиксировать целевую конфигурацию для Ubuntu Server 24.04 LTS (dev/prod).
@@ -40,7 +40,7 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 
 Критерии готовности:
 - ✅ `docker compose config` проходит без ошибок.
-- ✅ Все сервисы имеют healthcheck.
+- ⚠️ Ключевые runtime services имеют healthcheck; не каждый compose service покрыт healthcheck.
 - ✅ Документация и порядок установки синхронизированы.
 
 Источники:
@@ -55,7 +55,7 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 5. ✅ Идемпотентные скрипты: безопасный повторный запуск.
 6. ⚠️ Принцип наименьших привилегий: non-root, `cap_drop`, минимальные права. *(cap_drop не добавлен)*
 7. ✅ Observability by design: healthchecks, метрики, стандартизированные логи.
-8. ✅ Backup-first: автоматизация бэкапов + регулярный тест восстановления.
+8. ⚠️ Backup-first: автоматизация бэкапов есть; restore-test evidence ещё требуется.
 9. ✅ Version pinning: фиксированные версии образов, без `latest`.
 10. ✅ Конфигурация как код: все параметры в `.env`/compose, без ручных правок.
 11. ✅ Сегментация сети: внутренние сети, внешние порты только при необходимости.
@@ -140,7 +140,7 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 5. ✅ Закрыть внешние порты баз данных, привязать к `127.0.0.1`.
 
 **Реализация:**
-- `docker-compose.yml` — все сервисы с версиями, healthcheck, обязательными переменными
+- `docker-compose.yml` — сервисы с explicit image tags, healthcheck для ключевых runtime services и обязательными переменными
 - `supabase_meta` добавлен, `supabase_studio` связан через `depends_on`
 - `pgbouncer` добавлен для connection pooling
 - Порты: Redis `127.0.0.1:6379`, PostgreSQL `127.0.0.1:54322`, PgBouncer `127.0.0.1:6432`
@@ -219,7 +219,7 @@ docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 - https://prometheus.io/docs/introduction/overview/
 - https://grafana.com/docs/grafana/latest/
 
-## 9. Бэкапы и восстановление ✅
+## 9. Бэкапы и восстановление ⚠️
 1. ✅ Автоматизировать бэкапы PostgreSQL по расписанию.
 2. ⚠️ Проверить восстановление на чистой машине. *(требует ручного теста на VPS)*
 3. ⚠️ Зафиксировать RPO/RTO и процедуру восстановления. *(документировано, но не протестировано)*
@@ -240,7 +240,7 @@ sudo bash scripts/10-backup-postgres.sh
 
 ## 10. Документация и порядок установки ✅
 1. ✅ Синхронизировать порядок шагов между `README.md`, `QUICKSTART.md` и `docs/*`.
-2. ✅ Добавить отдельный `docs/troubleshooting.md`.
+2. ✅ Добавить отдельный `docs/11-troubleshooting.md`.
 3. ✅ Везде указывать минимальные требования и варианты dev/prod.
 
 **Реализация:**
@@ -255,13 +255,14 @@ sudo bash scripts/10-backup-postgres.sh
 - https://ubuntu.com/server/docs
 
 ## 11. Контроль качества и выпуск ⚠️
-1. ⚠️ Проверить скрипты через `shellcheck` (опционально, но желательно). *(не выполнено)*
+1. ✅ Проверить скрипты через `shellcheck` (опционально, но желательно). *(локально выполнено через `scripts/98-verify-scripts.sh` 2026-07-03; также покрыто CI)*
 2. ⚠️ Прогнать установку на чистой VM Ubuntu 24.04. *(требуется ручной тест)*
-3. ⚠️ Зафиксировать версии и обновить changelog. *(changelog не ведётся)*
+3. ⚠️ Зафиксировать версии и обновить changelog. *(Compose image tags зафиксированы и `latest` guard есть; changelog не ведётся)*
 
 **Реализация:**
 - `scripts/00-preflight-check.sh` — предварительная проверка системы
 - `scripts/99-ready-checks.sh --profile <profile>` — profile-aware проверка готовности после установки
+- `.github/workflows/quality.yml` — CI для whitespace, Bash syntax, ShellCheck, compose config и safety guards
 - `docs/12-quality-checks.md` — руководство по проверке качества
 - `docs/14-ready-rules.md` — правила gate-проверок
 
@@ -290,6 +291,6 @@ curl -f http://localhost:5678/healthz
 | 8. Наблюдаемость и логирование | ✅ Выполнено |
 | 9. Бэкапы и восстановление | ⚠️ Частично (требуется тест восстановления) |
 | 10. Документация | ✅ Выполнено |
-| 11. Контроль качества | ⚠️ Частично (требуется тест на VM) |
+| 11. Контроль качества | ⚠️ Частично (static gates проходят; требуется тест на VM) |
 
 **Легенда:** ✅ Выполнено | ⚠️ Частично/требует внимания | ❌ Не выполнено
