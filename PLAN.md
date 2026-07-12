@@ -22,7 +22,7 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 | Public Compose override correctness | ✅ Completed | Unsafe public override references/files are absent; public access path remains SSH tunnel or reviewed Nginx/reverse proxy. CI guard covers removed public override references. |
 | Version policy enforcement | 🔄 Current | Compose images use explicit tags and CI guards against `latest`; broader package/version enforcement remains future work. |
 | CI/quality gates | ✅ Completed | `.github/workflows/quality.yml` runs whitespace, Bash syntax, ShellCheck, compose config, `latest` guard, public override guard and tracked secret-file guard. Local verification passed on 2026-07-03. |
-| Clean Ubuntu 24.04 VM smoke-test evidence | ⏳ Planned | Capture clean VM evidence for supported profile flows before release readiness claims. |
+| Clean Ubuntu 24.04 VM smoke-test evidence | 🔄 Current | `minimal` passed on clean Ubuntu 24.04 VPS on 2026-07-12; `docker-host` forced installation-only check also passed on the same below-requirements VPS; `ai-stack` still needs a larger VM/VPS. See `docs/16-ubuntu-24-04-smoke-test-evidence.md`. |
 | Changelog/release readiness | ⏳ Planned | Decide changelog/release notes format and update process. |
 | ai-factory rules proposal/review | ✅ Completed | `.ai-factory/RULES.md` and `.ai-factory/rules/base.md` are present; `.ai-factory.json`, `.opencode/` and `.ai-factory/plans/` are ignored. |
 
