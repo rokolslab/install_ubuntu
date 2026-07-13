@@ -19,3 +19,4 @@
 - Beginner-facing docs must stay clear and avoid unnecessary jargon.
 - Risky system changes must include verification and rollback notes.
 - Do not broaden into Supabase scope, public Compose override, CI, changelog, version enforcement, or smoke-test evidence unless that is the approved PR goal.
+- Для задач, покрытых существующим `aif*` skill, обязательно загружайте соответствующий AI Factory skill и следуйте его workflow перед ручным выполнением.
