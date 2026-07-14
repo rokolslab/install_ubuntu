@@ -59,7 +59,7 @@ services:
 
   # PgBouncer - пул соединений PostgreSQL
   pgbouncer:
-    image: bitnami/pgbouncer:1.25.1-1
+    image: bitnamilegacy/pgbouncer:1.24.1-debian-12-r10
     container_name: pgbouncer
     restart: unless-stopped
     ports:
@@ -109,7 +109,7 @@ services:
 
   # Supabase Studio (опционально)
   supabase_studio:
-    image: supabase/studio:20240415-88f6a14
+    image: supabase/studio:2026.07.13-sha-b5ada96
     container_name: supabase_studio
     restart: unless-stopped
     ports:

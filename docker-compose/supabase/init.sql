@@ -2,6 +2,16 @@
 -- Выполняется при первом запуске контейнера
 
 -- Включаем расширение pgvector
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    CREATE ROLE supabase_admin LOGIN NOINHERIT CREATEROLE CREATEDB SUPERUSER;
+  ELSE
+    ALTER ROLE supabase_admin SUPERUSER;
+  END IF;
+END
+$$;
+
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Создаём таблицу для хранения документов с эмбеддингами
@@ -14,10 +24,8 @@ CREATE TABLE IF NOT EXISTS documents (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Создаём индекс для векторного поиска (HNSW)
-CREATE INDEX IF NOT EXISTS documents_embedding_idx ON documents 
-USING hnsw (embedding vector_cosine_ops)
-WITH (m = 24, ef_construction = 128);
+-- HNSW index creation can require CPU features that are unavailable on some VPS hypervisors.
+-- Keep the default init portable; add ANN indexes separately after validating the target CPU.
 
 -- Функция для поиска похожих документов
 CREATE OR REPLACE FUNCTION match_documents(
@@ -84,4 +92,3 @@ CREATE TRIGGER update_chat_sessions_updated_at
     BEFORE UPDATE ON chat_sessions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
-

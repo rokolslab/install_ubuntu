@@ -7,6 +7,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SSHD_CONFIG="/etc/ssh/sshd_config"
+SSHD_DROPIN="/etc/ssh/sshd_config.d/00-install-ubuntu-hardening.conf"
 SSHD_BACKUP=""
 
 # shellcheck source=../lib/common.sh
@@ -45,6 +46,21 @@ set_sshd_option() {
   fi
 }
 
+write_hardening_dropin() {
+  local include_password_lockdown="$1"
+
+  mkdir -p "$(dirname "$SSHD_DROPIN")"
+  {
+    printf '# Managed by install_ubuntu ssh-hardening.sh\n'
+    printf 'PermitEmptyPasswords no\n'
+    printf 'MaxAuthTries 3\n'
+    if [ "$include_password_lockdown" = "1" ]; then
+      printf 'PermitRootLogin no\n'
+      printf 'PasswordAuthentication no\n'
+    fi
+  } > "$SSHD_DROPIN"
+}
+
 has_non_root_key_access() {
   [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ] && [ -s "/home/${SUDO_USER}/.ssh/authorized_keys" ]
 }
@@ -69,8 +85,10 @@ main() {
     log_warn "Обнаружен non-root key access для ${SUDO_USER}; отключаю root/password login"
     set_sshd_option "PermitRootLogin" "no"
     set_sshd_option "PasswordAuthentication" "no"
+    write_hardening_dropin "1"
   else
     log_warn "Non-root key access не подтверждён; пропускаю PermitRootLogin no и PasswordAuthentication no, чтобы не потерять доступ"
+    write_hardening_dropin "0"
   fi
 
   if sshd -t; then

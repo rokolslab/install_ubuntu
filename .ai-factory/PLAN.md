@@ -1,122 +1,116 @@
-# План: Clean Ubuntu 24.04 VM smoke-test evidence
+# Implementation Plan: VPS safe prep and profile tests
 
-Дата создания: 2026-07-03
-Режим: fast
-Ветка: текущая `main`
+Branch: current `main`
+Created: 2026-07-15
+
+## Original Request
+
+приведения VPS к состоянию для тестирования на непротестированных ролях, проведение необхлдимых тестов
 
 ## Settings
 
-- Testing: yes — включить локальные static gates и documented smoke-test evidence checks.
-- Logging: standard — для каждого VM-прогона фиксировать команды, timestamp, профиль, результат и краткий вывод без secrets.
-- Docs: yes — mandatory docs checkpoint после сбора evidence.
-- Scope: только clean Ubuntu 24.04 VM smoke-test evidence и связанные статусные updates; не менять install logic без отдельного approved plan.
+- Testing: yes
+- Logging: verbose
+- Docs: no
+- Scope: Safe prep only. Разрешено включить swap 2G при отсутствии, доставить репозиторий в тестовую директорию и выполнить проверки. Не запускать `02-security-baseline.sh`, firewall/SSH hardening, `docker compose up`, secrets generation или другие mutating runtime flows без отдельного подтверждения.
 
-## Цель
+## Roadmap Linkage
 
-Снять главный release blocker: получить и задокументировать проверяемые результаты smoke-test на чистой Ubuntu 24.04 LTS VM для поддерживаемых profile flows. План не должен создавать иллюзию release readiness, если часть профилей не прогнана или прогнана с ограничениями.
-
-## Контекст
-
-- `PLAN.md` помечает `Clean Ubuntu 24.04 VM smoke-test evidence` как planned blocker.
-- `docs/acceptance-criteria.md` задаёт profile-level критерии для `minimal`, `proxy`, `docker-host`, `web`, `ai-stack`.
-- `docs/12-quality-checks.md` содержит общий checklist, но не хранит конкретные evidence snapshots.
-- `docs/14-ready-rules.md` задаёт ready gates, но сейчас ориентирован в первую очередь на `ai-stack` examples.
-- Нельзя запускать privileged/install scripts в этой agent-сессии без отдельного явного runtime approval и подходящей VM.
+Milestone: "AI-stack runtime evidence"
+Rationale: Подготовка VPS и profile checks уточняют готовность хоста для оставшихся resource-dependent тестов без заявления полного runtime evidence.
 
 ## Tasks
 
-### Phase 1: Evidence Design
+### Phase 1: Safe Access And Staging
 
-1. [x] Зафиксировать формат evidence-документа для Ubuntu 24.04 VM smoke tests.
-   - Files: создать `docs/16-ubuntu-24-04-smoke-test-evidence.md`, при необходимости обновить `README.md` и `AGENTS.md` documentation map.
-   - Deliverable: шаблон с полями: date, VM provider/type, Ubuntu version, kernel, resources, git commit, profile, commands run, pass/fail result, redacted notes, residual risks.
-   - Expected behavior: evidence можно проверить без доступа к secrets и без raw `.env` dumps.
-   - Logging/reporting: фиксировать только команды, exit status и sanitized observations; не выводить passwords, tokens, private keys, contents of `docker-compose/.env`.
-   - Dependencies: нет.
+- [x] Task 1: Проверить SSH-доступ строго через `<admin-key>`.
+  - Deliverable: подтверждённый доступ к тестовому VPS с `IdentitiesOnly=yes`.
+  - Expected behavior: команда завершается с exit code `0`, пользователь `ops`, hostname получен.
+  - Files: no repository changes beyond QA artifacts.
+  - Logging requirements: фиксировать command shape, exit status, user/hostname; не логировать private key material.
 
-2. [x] Определить mandatory и optional profile matrix для первого smoke-test PR.
-   - Files: `docs/16-ubuntu-24-04-smoke-test-evidence.md`, `docs/12-quality-checks.md`, `docs/14-ready-rules.md`.
-   - Deliverable: явно разделить обязательные для первого PR профили (`minimal`, `docker-host`) и resource-dependent профиль (`ai-stack`), если VM подходит по требованиям.
-   - Expected behavior: если `ai-stack` не прогнан из-за ресурсов или отсутствия VM, документ фиксирует blocker/skip reason и не меняет release readiness на completed.
-   - Logging/reporting: записывать причину skip как факт, без домыслов и без production claims.
-   - Dependencies: Task 1.
+- [x] Task 2: Доставить текущий репозиторий на VPS в изолированную test-директорию.
+  - Deliverable: remote test directory содержит рабочую копию без `.git`, `.ai-factory/qa` run artifacts и без secrets.
+  - Expected behavior: scripts запускаются с корректным `PROJECT_ROOT`; tracked secret-like files не копируются.
+  - Files: remote test directory only.
+  - Logging requirements: фиксировать список top-level paths и размер/статус копирования; не выводить `.env`, ключи или tokens.
+  - Dependencies: Task 1.
 
-### Phase 2: Clean VM Execution Evidence
+### Phase 2: VPS Preparation
 
-3. [x] Собрать clean VM evidence для `minimal` profile.
-   - Files: `docs/16-ubuntu-24-04-smoke-test-evidence.md`.
-   - Deliverable: выполнить на чистой Ubuntu 24.04 LTS VM documented flow: preflight, SSH key setup path note, security baseline, ready checks; зафиксировать результат.
-   - Expected behavior: `minimal` flow не требует Docker, compose или `.env`; ready checks проходят либо failure документирован с причиной и follow-up.
-   - Logging/reporting: сохранить sanitized command transcript summary, timestamps, profile name, exit status; не включать IP, private keys, generated secrets или полный firewall dump с чувствительными адресами.
-   - Dependencies: Tasks 1-2.
+- [x] Task 3: Включить swap 2G, если swap отсутствует.
+  - Deliverable: active `/swapfile` с persist entry в `/etc/fstab`, если swap был `0MB`.
+  - Expected behavior: повторный запуск idempotent; если swap уже есть, script ничего не меняет.
+  - Files: remote `/swapfile`, `/etc/fstab` managed by `scripts/security/swap.sh`.
+  - Logging requirements: фиксировать `swapon --show`, total swap before/after и exit status; не логировать unrelated system data.
+  - Dependencies: Task 2.
 
-4. [x] Собрать clean VM evidence для `docker-host` profile.
-   - Files: `docs/16-ubuntu-24-04-smoke-test-evidence.md`.
-   - Deliverable: выполнить на чистой Ubuntu 24.04 LTS VM documented flow: preflight, security baseline, Docker install, ready checks, `docker --version`, `docker compose version`.
-   - Current status 2026-07-12: forced installation-only check passed on `fi-1` after operator override; preflight still classified profile as `NO` because RAM/disk are below requirements.
-   - Expected behavior: Docker Engine и Compose plugin устанавливаются через documented path; ready checks проходят либо failure документирован с причиной и follow-up.
-   - Logging/reporting: фиксировать versions и exit status; не запускать unrelated workloads; не публиковать Docker API наружу.
-   - Dependencies: Tasks 1-2.
+### Phase 3: Profile Tests
 
-5. [x] Собрать или явно отложить clean VM evidence для `ai-stack` profile.
-   - Files: `docs/16-ubuntu-24-04-smoke-test-evidence.md`, возможно `PLAN.md`.
-   - Deliverable: если VM соответствует `ai-stack` requirements, выполнить documented flow с generated local secrets, compose config/up, ready checks и service smoke checks. Если VM не соответствует, зафиксировать `not run` с ресурсной причиной и оставить blocker открытым.
-   - Current status 2026-07-12: not run on `fi-1`; VPS is below `ai-stack` requirements.
-   - Expected behavior: `ai-stack` не получает completed/release-ready статус без фактического успешного прогона; public direct Compose exposure не используется.
-   - Logging/reporting: не выводить `.env`; фиксировать только sanitized service status, health summary и failures.
-   - Dependencies: Tasks 1-2, ideally after Task 4.
+- [x] Task 4: Запустить remote preflight matrix и profile-specific preflight checks.
+  - Deliverable: результаты `scripts/00-preflight-check.sh` для общей matrix и профилей `minimal`, `proxy`, `docker-host`, `web`, `ai-stack`.
+  - Expected behavior: после swap VPS получает `OK` для всех ресурсных профилей, если thresholds satisfied.
+  - Files: no remote config changes expected.
+  - Logging requirements: фиксировать profile state rows, OS/resources summary и warnings; не выводить hardware dumps больше нужного summary.
+  - Dependencies: Task 3.
 
-### Phase 3: Docs And Status Sync
+- [x] Task 5: Выполнить non-mutating readiness checks для уже установленного состояния.
+  - Deliverable: результаты `scripts/99-ready-checks.sh --profile minimal|proxy|docker-host|web`, без `ai-stack` runtime readiness, потому что compose stack не запускается в safe prep scope.
+  - Expected behavior: `minimal/proxy/web` могут выявить отсутствие `ufw`/baseline как expected blocker до security baseline; `docker-host` должен подтвердить Docker service через sudo-capable context или дать конкретный blocker.
+  - Files: no remote config changes expected.
+  - Logging requirements: фиксировать pass/fail per profile, первые error lines и interpretations; не менять firewall/SSH services.
+  - Dependencies: Task 4.
 
-6. [x] Синхронизировать quality docs и acceptance criteria по фактам smoke-test.
-   - Files: `docs/12-quality-checks.md`, `docs/14-ready-rules.md`, `docs/acceptance-criteria.md`, `docs/16-ubuntu-24-04-smoke-test-evidence.md`, возможно `README.md`/`AGENTS.md` links.
-   - Deliverable: docs ссылаются на evidence document; ready rules ясно разделяют local static checks, profile ready checks и clean VM evidence.
-   - Expected behavior: beginner-facing docs остаются понятными; README не превращается в длинный manual.
-   - Logging/reporting: summary перечисляет только изменённые docs и подтверждённые profile results.
-   - Dependencies: Tasks 3-5.
+- [x] Task 6: Выполнить local и remote Bash verification.
+  - Deliverable: `bash scripts/98-verify-scripts.sh` локально и на remote test copy.
+  - Expected behavior: syntax/ShellCheck checks проходят или дают actionable failure.
+  - Files: no config changes expected.
+  - Logging requirements: фиксировать command, exit status и summary count; не включать full irrelevant logs.
+  - Dependencies: Task 2.
 
-7. [x] Обновить `PLAN.md` только по подтверждённым результатам.
-   - Files: `PLAN.md`.
-   - Deliverable: изменить статус `Clean Ubuntu 24.04 VM smoke-test evidence` и related sections только для реально пройденных профилей; оставить blockers для непройденных или failed профилей.
-   - Expected behavior: нет overclaim release readiness; статус отражает evidence, а не намерения.
-   - Logging/reporting: в итоговом summary указать, какие статусы изменены и на какой evidence они ссылаются.
-   - Dependencies: Tasks 3-6.
+### Phase 4: QA Evidence
 
-### Phase 4: Verification
-
-8. [x] Запустить локальные quality gates после docs/status updates.
-   - Files: changed docs and plan files.
-   - Deliverable: `git diff --check`, `scripts/98-verify-scripts.sh`, `docker compose --env-file env.example -f docker-compose.yml -f docker-compose.monitoring.yml config`, targeted guards for `latest`, public override references and tracked secret-like files.
-   - Expected behavior: static gates проходят; если gate падает, task остаётся incomplete до исправления.
-   - Logging/reporting: фиксировать команды и pass/fail без secrets; полный compose output не должен раскрывать real `.env`.
-   - Dependencies: Tasks 6-7.
+- [x] Task 7: Сохранить AIF QA evidence по выполненным тестам.
+  - Deliverable: обновлённые QA artifacts под `.ai-factory/qa/` с result matrix, blockers и рекомендациями.
+  - Expected behavior: результаты отделяют resource suitability от full runtime evidence; failed readiness до baseline не трактуется как product defect.
+  - Files: `.ai-factory/qa/**`.
+  - Logging requirements: сохранять sanitized evidence, command names, exit codes, profile states; не сохранять secrets/private keys.
+  - Dependencies: Tasks 4-6.
 
 ## Acceptance Criteria
 
-- Есть `docs/16-ubuntu-24-04-smoke-test-evidence.md` с sanitized evidence format и фактическими результатами или explicit blockers.
-- `minimal` clean Ubuntu 24.04 VM result зафиксирован как pass/fail с командами и exit status.
-- `docker-host` clean Ubuntu 24.04 VM result зафиксирован как pass/fail либо explicit not-run blocker с командами и exit status.
-- `ai-stack` либо успешно прогнан на подходящей VM, либо явно оставлен blocker с причиной; completed status не ставится без успешного прогона.
-- `docs/12-quality-checks.md`, `docs/14-ready-rules.md` и `docs/acceptance-criteria.md` не противоречат evidence.
-- `PLAN.md` обновлён только по подтверждённым фактам.
-- Secrets, private keys и generated `.env` contents не попали в docs, logs или git.
-- Static gates после изменений проходят.
-
-## Commit Plan
-
-1. `docs: add ubuntu 24.04 smoke test evidence`
-   - Tasks 1-5.
-2. `docs: sync smoke test readiness status`
-   - Tasks 6-8.
+- SSH подтверждён строго через explicit admin key.
+- VPS содержит тестовую копию репозитория в isolated test directory.
+- Swap активен или документирован как уже существующий.
+- Preflight matrix выполнена после подготовки и классифицирует профили по фактическому состоянию.
+- Readiness checks выполнены только для безопасных профилей без запуска security baseline и compose runtime.
+- Local/remote script verification выполнены.
+- AIF QA evidence сохранён без secrets.
 
 ## Next Step
 
-Нужна VM/VPS большего размера для оставшегося `docker-host` evidence. Минимум: 1024MB RAM и 10GB disk free; практически лучше 2GB RAM и 15GB+ disk.
+Execute the safe prep plan now, then report passed/failed/blocked checks and what remains for full `ai-stack` smoke.
 
-## Verification Status
+## Full Smoke Addendum
 
-- Status: partially complete on 2026-07-12.
-- Passed evidence: `minimal` clean Ubuntu 24.04 VPS smoke test.
-- Remaining blocker: `ai-stack` was not run on `fi-1` because preflight classified the host as below requirements. `docker-host` passed only as a forced installation-only check and does not validate workload capacity.
-- Local checks: `git diff --check`, `scripts/98-verify-scripts.sh`, Docker Compose base config, Docker Compose monitoring config, latest-image guard, removed public override guard and tracked secret-file guard passed.
-- Note: `rg` is not installed locally, so targeted guards were run with `grep` matching the CI workflow.
+User approval received after safe prep: run security baseline and full `ai-stack` runtime smoke on the prepared VPS.
+
+### Phase 5: Authorized Security And Runtime Smoke
+
+- [x] Task 8: Run `02-security-baseline.sh --profile ai-stack` on remote test copy.
+  - Deliverable: UFW active with SSH/80/443, fail2ban active, unattended-upgrades active, sysctl baseline applied.
+  - Expected behavior: SSH access remains available through explicit admin key after hardening.
+  - Files: remote `/etc/ssh/sshd_config`, `/etc/ssh/sshd_config.d/00-install-ubuntu-hardening.conf`, UFW/fail2ban/unattended-upgrades/sysctl state.
+  - Logging requirements: record service states and effective SSH options; do not log keys or secrets.
+
+- [x] Task 9: Fix blockers discovered by runtime smoke in tracked project files and remote test copy.
+  - Deliverable: update unavailable Compose image tags and portable Supabase init SQL; fix SSH hardening cloud-init override behavior.
+  - Expected behavior: all referenced images resolve, pgvector init succeeds on VPS CPU, effective `PasswordAuthentication no` is enforced.
+  - Files: `docker-compose/docker-compose.yml`, `docker-compose/supabase/init.sql`, `scripts/security/ssh-hardening.sh`.
+  - Logging requirements: record image names/tags and sanitized SQL outcomes only.
+
+- [x] Task 10: Run `ai-stack` runtime smoke.
+  - Deliverable: generated `.env`, `docker compose up -d`, `99-ready-checks.sh --profile ai-stack`, pgvector/table checks and exposure check.
+  - Expected behavior: required services run and ready checks pass; internal service ports bind to `127.0.0.1`.
+  - Files: remote `docker-compose/.env`, Docker containers and volumes on VPS.
+  - Logging requirements: never print `.env` values; record only service names, states, exit codes and sanitized query results.
