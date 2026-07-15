@@ -126,6 +126,11 @@ services:
         condition: service_healthy
       supabase_meta:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://supabase_studio:3000/api/platform/profile').then((r) => { if (r.status !== 200) throw new Error(r.status) })\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     logging:
       driver: "json-file"
       options:

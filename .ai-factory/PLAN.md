@@ -114,3 +114,21 @@ User approval received after safe prep: run security baseline and full `ai-stack
   - Expected behavior: required services run and ready checks pass; internal service ports bind to `127.0.0.1`.
   - Files: remote `docker-compose/.env`, Docker containers and volumes on VPS.
   - Logging requirements: never print `.env` values; record only service names, states, exit codes and sanitized query results.
+
+### Phase 6: High-Priority Follow-Ups
+
+- [x] Task 11: Fix `supabase_studio` Docker healthcheck.
+  - Deliverable: Compose override for Studio healthcheck and verified `healthy` container state on the VPS.
+  - Expected behavior: healthcheck uses a URL reachable from inside the container and still checks the application endpoint.
+  - Files: `docker-compose/docker-compose.yml`, `.ai-factory/patches/2026-07-15-01.19.md`.
+  - Regression check: before fix, Docker health was `unhealthy` while host-local HTTP passed; after fix and service recreate, Docker health became `healthy`.
+
+- [x] Task 12: Run backup/restore drill without exposing secrets.
+  - Deliverable: backup created by `scripts/10-backup-postgres.sh`, restored into separate `restore_drill` database, marker-row SQL verified, temporary DB/table removed.
+  - Expected behavior: backup and restore complete with exit code `0`; no `.env` values are printed.
+  - Files: remote backup drill artifacts only; docs updated with sanitized evidence.
+  - Finding: host `pg_dump` 16 dump should be restored by compatible host `psql` 16, not older container `psql` 15.
+
+- [x] Task 13: Sync docs and roadmap/status.
+  - Deliverable: `PLAN.md`, `.ai-factory/ROADMAP.md`, `docs/10-backup-restore.md`, `docs/12-quality-checks.md`, `docs/14-ready-rules.md`, `docs/16-ubuntu-24-04-smoke-test-evidence.md` updated.
+  - Expected behavior: docs claim only verified Ubuntu 24.04 results and mark Ubuntu 26.04 compatibility as blocked until a real 26.04 environment exists.

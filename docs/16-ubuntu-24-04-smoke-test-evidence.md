@@ -27,7 +27,64 @@ Each run should record:
 |---|---|---|
 | `minimal` | Mandatory for first release-readiness evidence | Passed on 2026-07-12 with notes below. |
 | `docker-host` | Mandatory, but only on a VPS/VM that meets profile requirements | Forced installation-only check passed on `fi-1` after operator override; preflight still classified VPS as `NO` due RAM/disk below requirement. |
-| `ai-stack` | Resource-dependent | Not run on `fi-1`; VPS is below `ai-stack` requirements. |
+| `ai-stack` | Resource-dependent | Full runtime smoke passed on a suitable sanitized Ubuntu 24.04 VPS on 2026-07-15; see run below. |
+
+## Run 2026-07-15: Suitable VPS `ai-stack` Full Runtime Smoke
+
+### Environment
+
+- Timestamp: 2026-07-15T00:00Z to 2026-07-15T01:25Z.
+- SSH target: sanitized `vps-ai-1`.
+- Host identity: sanitized.
+- OS: Ubuntu 24.04.4 LTS.
+- Architecture: `x86_64`.
+- CPU: 4 vCPU.
+- RAM: about 5902 MiB.
+- Disk: about 118 GiB available to the test filesystem.
+- Swap: 2047 MiB after `scripts/security/swap.sh --size 2G --force-recreate`.
+- Docker: `Docker version 29.6.1`.
+- Docker Compose: `Docker Compose version v5.3.1`.
+- Git commit tested: `a170999`, plus working-tree verification for the `supabase_studio` healthcheck override recorded in this document.
+- Remote test path: `/home/ops/install_ubuntu-test`.
+
+### Commands And Results
+
+| Step | Command | Exit status | Result |
+|---|---|---:|---|
+| SSH/connectivity | `ssh -i <admin-key> -o IdentitiesOnly=yes ops@<host> 'hostname; id; uname -a'` | 0 | Passed. |
+| Remote script verification | `bash scripts/98-verify-scripts.sh` | 0 | Passed on the VPS test copy. |
+| Profile preflight matrix | `bash scripts/00-preflight-check.sh --profile <profile>` for `minimal`, `proxy`, `docker-host`, `web`, `ai-stack` | 0 | Passed; all listed profiles classified as `OK` after swap was enabled. |
+| Safe readiness checks | `bash scripts/99-ready-checks.sh --profile minimal|proxy|docker-host|web` | 0 | Passed in the prepared VPS state. |
+| Security baseline | `sudo env DEBIAN_FRONTEND=noninteractive bash scripts/02-security-baseline.sh --profile ai-stack` | 0 | Passed; SSH access remained available through explicit admin key. |
+| Secrets generation | `bash scripts/12-generate-secrets.sh --profile ai-stack` | 0 | Passed; generated `.env` was not logged and had mode `600`. |
+| Compose runtime | `docker compose --env-file .env up -d` | 0 | Passed after resolving unavailable image tags and portable init SQL issues. |
+| Ready checks | `sudo bash scripts/99-ready-checks.sh --profile ai-stack` | 0 | Passed. |
+| pgvector smoke | `SELECT vector_dims('[1,2,3]'::vector);` and schema checks | 0 | Passed; `vector` extension and expected tables were present. |
+| Studio healthcheck regression | Docker health for `supabase_studio` before and after Compose override | 0 | Reproduced `unhealthy` due image `localhost` probe; passed after overriding healthcheck to `http://supabase_studio:3000/api/platform/profile`. |
+| Backup script prerequisite | `sudo env BACKUP_DIR=<drill-dir> RETENTION_DAYS=0 bash scripts/10-backup-postgres.sh` before `postgresql-client` install | 1 | Expected prerequisite failure: `pg_dump` was absent. |
+| Backup/restore drill | Same backup command after `postgresql-client` install, restore into separate `restore_drill` DB, marker-row query | 0 | Passed; marker query returned `restore-drill-ok`; restored public table count was `57`; temporary DB/table were removed. |
+
+### Observations
+
+- `ai-stack` preflight classified the VPS as suitable after 2 GiB swap was enabled.
+- Security baseline enabled UFW with public `22`, `80` and `443` only for the selected profile; internal service ports remained bound to `127.0.0.1`.
+- Effective SSH hardening was verified with `sshd -T`: password auth disabled, root login disabled, max auth tries set to `3`, empty passwords disabled.
+- `fail2ban` and `unattended-upgrades` were active after baseline.
+- Runtime readiness passed for PostgreSQL/Supabase, PgBouncer, Redis, n8n, Docker and profile-specific checks.
+- The pgvector check passed without creating the default HNSW index during init; HNSW creation remains an operator action after CPU compatibility and workload sizing are known.
+- `supabase_studio` was reachable through the host-local published port and became Docker `healthy` after overriding the inherited loopback healthcheck.
+- Backup/restore evidence used a temporary marker table and separate restore database; both were removed after the drill.
+- Restoring a dump produced by host `pg_dump` 16 required host `psql` 16 for restore. Container `psql` 15 rejected the dump's `\restrict` command, so documented restore commands should use a PostgreSQL client version compatible with the dump tool.
+
+### Result
+
+`ai-stack` Ubuntu 24.04 suitable VPS full runtime smoke test: passed.
+
+### AI-Stack Residual Risks
+
+- This was a single suitable VPS run, not a broad provider matrix.
+- Ubuntu 26.04 compatibility remains unvalidated and must not be claimed until a real Ubuntu 26.04 environment passes the defined checks.
+- The stack was left running after the smoke test for follow-up inspection.
 
 ## Run 2026-07-12: `fi-1` Minimal Profile
 
@@ -128,9 +185,9 @@ This was a forced installation-only check requested after preflight classified t
 
 ## Overall Residual Risks
 
-- `ai-stack` release-readiness evidence is still missing and needs a VPS/VM with at least 4 GiB RAM and 50 GiB disk available.
-- This run used root SSH access; disabling root/password login requires a separate validated non-root key-access setup.
-- This run did not validate Ubuntu 26.04 compatibility.
+- Ubuntu 24.04 evidence now covers `minimal`, a forced `docker-host` installation-only check on a below-requirements VPS, and full `ai-stack` runtime on a suitable VPS.
+- The `docker-host` run remains install-script evidence only because that VPS was below documented resources.
+- This evidence does not validate Ubuntu 26.04 compatibility.
 
 ## See Also
 

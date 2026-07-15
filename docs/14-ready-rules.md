@@ -36,7 +36,7 @@ sudo bash scripts/99-ready-checks.sh --profile ai-stack
 ## 5. Release Evidence
 Перед release readiness claims нужен clean Ubuntu 24.04 VM/VPS evidence для соответствующих профилей.
 
-Текущий статус хранится в [Ubuntu 24.04 Smoke Test Evidence](16-ubuntu-24-04-smoke-test-evidence.md): `minimal` пройден 2026-07-12, `docker-host` installation-only check пройден после operator override на VPS ниже требований, `ai-stack` остаётся открытым до запуска на VM/VPS с подходящими ресурсами.
+Текущий статус хранится в [Ubuntu 24.04 Smoke Test Evidence](16-ubuntu-24-04-smoke-test-evidence.md): `minimal` пройден 2026-07-12, `docker-host` installation-only check пройден после operator override на VPS ниже требований, полный `ai-stack` runtime smoke пройден 2026-07-15 на подходящем Ubuntu 24.04 VPS. Ubuntu 26.04 compatibility остаётся непроверенным target до отдельного запуска на реальной Ubuntu 26.04 среде.
 
 ## Источники
 - https://docs.docker.com/compose/reference/config/

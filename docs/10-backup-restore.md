@@ -44,7 +44,19 @@ pg_dump -h localhost -p 54322 -U postgres -d postgres | gzip > /opt/backups/post
 gunzip -c /opt/backups/postgres_YYYYMMDD_HHMMSS.sql.gz | psql -h localhost -p 54322 -U postgres -d postgres
 ```
 
-## 6. Рекомендации
+Используйте `psql` версии, совместимой с `pg_dump`, которым создан dump. Например, если backup сделан host `pg_dump` 16, восстанавливайте его host `psql` 16; более старый `psql` внутри контейнера PostgreSQL 15 может не понять новые meta-команды dump-файла, такие как `\restrict`.
+
+## 6. Проверенный restore drill
+
+Sanitized drill 2026-07-15 на Ubuntu 24.04 VPS для `ai-stack`:
+
+1. Создан marker table в `postgres`.
+2. `scripts/10-backup-postgres.sh` создал compressed SQL dump без вывода секрета.
+3. Dump восстановлен в отдельную базу `restore_drill` через host `psql` той же версии, что и `pg_dump`.
+4. Контрольный запрос вернул marker value `restore-drill-ok`.
+5. Временная база и marker table удалены после проверки.
+
+## 7. Рекомендации
 1. Храните бэкапы на отдельном диске или сервере.
 2. Проверяйте восстановление минимум раз в месяц.
 3. Зафиксируйте RPO/RTO в документации проекта.

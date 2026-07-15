@@ -57,7 +57,20 @@ curl -f http://localhost:9090/-/healthy
 curl -f http://localhost:3000/api/health
 ```
 
-## 5. Проверка на чистой VM
+## 5. Backup/restore drill
+
+Для `ai-stack` после первого успешного запуска проверьте не только создание backup, но и восстановление в отдельную тестовую базу.
+
+Минимальный критерий:
+
+1. `scripts/10-backup-postgres.sh` создаёт `postgres_*.sql.gz` без вывода пароля.
+2. Dump восстанавливается в отдельную базу, например `restore_drill`.
+3. Контрольный SQL-запрос по восстановленным данным проходит.
+4. Временная база и marker data удалены после проверки.
+
+Используйте `psql` версии, совместимой с `pg_dump`, которым был создан dump. Например, dump от host `pg_dump` 16 следует восстанавливать host `psql` 16, а не более старым `psql` внутри контейнера PostgreSQL 15.
+
+## 6. Проверка на чистой VM
 1. Разверните чистую VM Ubuntu 24.04 LTS.
 2. Запустите preflight для выбранного профиля.
 3. Продолжайте install flow только если preflight не классифицирует профиль как `NO`.
@@ -65,7 +78,7 @@ curl -f http://localhost:3000/api/health
 5. Запустите matching ready checks для того же профиля.
 6. Зафиксируйте sanitized результат в [Ubuntu 24.04 Smoke Test Evidence](16-ubuntu-24-04-smoke-test-evidence.md).
 
-Текущий evidence checkpoint: `minimal` прошёл на clean Ubuntu 24.04 VPS 2026-07-12; `docker-host` installation-only check прошёл на VPS ниже требований после operator override; `ai-stack` требует более крупную VM/VPS и не считается пройденным.
+Текущий evidence checkpoint: `minimal` прошёл на clean Ubuntu 24.04 VPS 2026-07-12; `docker-host` installation-only check прошёл на VPS ниже требований после operator override; полный `ai-stack` runtime smoke прошёл на подходящем Ubuntu 24.04 VPS 2026-07-15. Ubuntu 26.04 compatibility остаётся отдельным непроверенным target.
 
 ## Источники
 - https://github.com/koalaman/shellcheck

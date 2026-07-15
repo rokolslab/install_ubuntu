@@ -17,12 +17,12 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 |---|---|---|
 | Secrets safety PR | ✅ Completed | Confirmed in git history as `74eaeda fix: harden generated secrets handling`. |
 | Project governance baseline | ✅ Completed | `docs/project-requirements.md`, `docs/version-policy.md`, `docs/acceptance-criteria.md` and README links are present; confirmed in git history as `106de4a docs: add project governance baseline`. |
-| Ubuntu 26.04 compatibility validation | ⏳ Planned | Validate packages, scripts, Docker, Compose and profile ready checks before compatibility claims. |
+| Ubuntu 26.04 compatibility validation | ⛔ Blocked | External blocker: requires access to a real Ubuntu 26.04 VPS/VM. Do not make compatibility claims until package, Docker, Compose, profile ready checks and backup/restore pass there. |
 | Supabase scope clarity | ✅ Completed | Docs now state current scope as PostgreSQL with selected Supabase-related components; Full Supabase is deferred. Confirmed in `docs/03-supabase.md` and `docs/project-requirements.md`. |
 | Public Compose override correctness | ✅ Completed | Unsafe public override references/files are absent; public access path remains SSH tunnel or reviewed Nginx/reverse proxy. CI guard covers removed public override references. |
 | Version policy enforcement | 🔄 Current | Compose images use explicit tags and CI guards against `latest`; broader package/version enforcement remains future work. |
 | CI/quality gates | ✅ Completed | `.github/workflows/quality.yml` runs whitespace, Bash syntax, ShellCheck, compose config, `latest` guard, public override guard and tracked secret-file guard. Local verification passed on 2026-07-03. |
-| Clean Ubuntu 24.04 VM smoke-test evidence | 🔄 Current | `minimal` passed on clean Ubuntu 24.04 VPS on 2026-07-12; `docker-host` forced installation-only check also passed on the same below-requirements VPS; `ai-stack` still needs a larger VM/VPS. See `docs/16-ubuntu-24-04-smoke-test-evidence.md`. |
+| Ubuntu 24.04 smoke-test evidence | ✅ Completed | `minimal` passed on clean Ubuntu 24.04 VPS on 2026-07-12; `docker-host` forced installation-only check passed on the same below-requirements VPS; full `ai-stack` runtime smoke passed on a suitable Ubuntu 24.04 VPS on 2026-07-15. See `docs/16-ubuntu-24-04-smoke-test-evidence.md`. |
 | Changelog/release readiness | ⏳ Planned | Decide changelog/release notes format and update process. |
 | ai-factory rules proposal/review | ✅ Completed | `.ai-factory/RULES.md` and `.ai-factory/rules/base.md` are present; `.ai-factory.json`, `.opencode/` and `.ai-factory/plans/` are ignored. |
 
@@ -30,7 +30,7 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 
 # План приведения проекта к лучшим практикам
 
-> **Последняя проверка:** 2026-07-03
+> **Последняя проверка:** 2026-07-15
 
 ## 1. Цели и критерии готовности
 1. ✅ Зафиксировать целевую конфигурацию для Ubuntu Server 24.04 LTS (dev/prod).
@@ -55,7 +55,7 @@ This file stays in the repository root as a project roadmap and quality-gate tra
 5. ✅ Идемпотентные скрипты: безопасный повторный запуск.
 6. ⚠️ Принцип наименьших привилегий: non-root, `cap_drop`, минимальные права. *(cap_drop не добавлен)*
 7. ✅ Observability by design: healthchecks, метрики, стандартизированные логи.
-8. ⚠️ Backup-first: автоматизация бэкапов есть; restore-test evidence ещё требуется.
+8. ✅ Backup-first: автоматизация бэкапов есть; restore-test evidence получен 2026-07-15 на `ai-stack` VPS.
 9. ✅ Version pinning: фиксированные версии образов, без `latest`.
 10. ✅ Конфигурация как код: все параметры в `.env`/compose, без ручных правок.
 11. ✅ Сегментация сети: внутренние сети, внешние порты только при необходимости.
@@ -221,13 +221,14 @@ docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 
 ## 9. Бэкапы и восстановление ⚠️
 1. ✅ Автоматизировать бэкапы PostgreSQL по расписанию.
-2. ⚠️ Проверить восстановление на чистой машине. *(требует ручного теста на VPS)*
-3. ⚠️ Зафиксировать RPO/RTO и процедуру восстановления. *(документировано, но не протестировано)*
+2. ✅ Проверить восстановление на отдельной тестовой базе. *(restore drill пройден на Ubuntu 24.04 `ai-stack` VPS 2026-07-15)*
+3. ⚠️ Зафиксировать RPO/RTO для конкретной эксплуатации. *(процедура и версия client compatibility отражены в документации; численные RPO/RTO зависят от операционной политики)*
 
 **Реализация:**
 - `scripts/10-backup-postgres.sh` — ручной бэкап с PGPASSFILE
 - `scripts/11-setup-backup-cron.sh` — автоматизация по cron
 - `docs/10-backup-restore.md` — документация по бэкапу и восстановлению
+- `docs/16-ubuntu-24-04-smoke-test-evidence.md` — sanitized restore drill evidence
 
 Пример бэкапа:
 ```bash
@@ -256,7 +257,7 @@ sudo bash scripts/10-backup-postgres.sh
 
 ## 11. Контроль качества и выпуск ⚠️
 1. ✅ Проверить скрипты через `shellcheck` (опционально, но желательно). *(локально выполнено через `scripts/98-verify-scripts.sh` 2026-07-03; также покрыто CI)*
-2. ⚠️ Прогнать установку на чистой VM Ubuntu 24.04. *(требуется ручной тест)*
+2. ✅ Прогнать установку/ready checks на Ubuntu 24.04. *(`minimal` clean VPS, forced `docker-host` install check и full `ai-stack` runtime smoke зафиксированы; provider matrix остаётся future hardening)*
 3. ⚠️ Зафиксировать версии и обновить changelog. *(Compose image tags зафиксированы и `latest` guard есть; changelog не ведётся)*
 
 **Реализация:**
@@ -289,8 +290,8 @@ curl -f http://localhost:5678/healthz
 | 6. Управление секретами | ✅ Выполнено |
 | 7. База данных и pgvector | ✅ Выполнено |
 | 8. Наблюдаемость и логирование | ✅ Выполнено |
-| 9. Бэкапы и восстановление | ⚠️ Частично (требуется тест восстановления) |
+| 9. Бэкапы и восстановление | ⚠️ Частично (restore drill пройден; численные RPO/RTO ещё нужно зафиксировать под эксплуатацию) |
 | 10. Документация | ✅ Выполнено |
-| 11. Контроль качества | ⚠️ Частично (static gates проходят; требуется тест на VM) |
+| 11. Контроль качества | ⚠️ Частично (static gates и Ubuntu 24.04 smoke проходят; Ubuntu 26.04 validation заблокирована отсутствием среды) |
 
 **Легенда:** ✅ Выполнено | ⚠️ Частично/требует внимания | ❌ Не выполнено
