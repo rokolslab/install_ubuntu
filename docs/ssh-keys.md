@@ -2,7 +2,7 @@
 
 # SSH-ключи для GitHub и Ubuntu/VPS
 
-Этот документ описывает практичный стандарт SSH-ключей для рабочих машин, GitHub, VPS/root доступа, deploy-пользователей и резервного доступа.
+Этот документ описывает практичный стандарт SSH-ключей для рабочих машин, GitHub, VPS/root доступа, non-root admin доступа, deploy-пользователей и резервного доступа.
 
 ## Короткий обзор
 
@@ -11,7 +11,7 @@
 - Приватный ключ без `.pub` остаётся только там, откуда вы подключаетесь.
 - Для GitHub, root/admin и backup/rescue ключей используйте passphrase.
 - Для deploy/automation ключей пустая passphrase допустима только после явного принятия риска и ограничения прав.
-- Перед SSH hardening сначала проверьте non-root key access, второй SSH-сеанс и `sudo`.
+- Перед SSH hardening сначала проверьте non-root key access, второй SSH-сеанс и `sudo -v`.
 
 Интерактивный helper проекта:
 
@@ -19,38 +19,70 @@
 bash scripts/01-setup-ssh-keys.sh
 ```
 
-Этот helper Bash-oriented: он лучше подходит для Linux/macOS, WSL и Git Bash. Для native Windows PowerShell используйте команды из раздела Windows ниже.
+Этот helper Bash-oriented: он лучше подходит для Linux/macOS, WSL и Git Bash. Для native Windows PowerShell используйте команды из раздела [Платформенные команды](#платформенные-команды).
 
-## Матрица платформ
+## Быстрый выбор сценария
 
-| Клиент | Что использовать | Важные отличия |
-|--------|------------------|----------------|
-| Linux/macOS | OpenSSH в terminal | `~/.ssh`, `chmod`, `ssh-copy-id` обычно доступны. |
-| Windows PowerShell | Windows OpenSSH | Путь `$env:USERPROFILE\.ssh`, права через ACL, `ssh-copy-id` обычно отсутствует. |
-| Git Bash | OpenSSH из Git for Windows | `~/.ssh` обычно указывает на Windows home; удобно для Unix-like команд. |
-| WSL | Linux OpenSSH внутри WSL | Ключи WSL и Windows OpenSSH могут лежать в разных home directories. |
-| PuTTY/Pageant | PuTTYgen, `.ppk`, Pageant | Используйте для PuTTY/Plink workflows; не смешивайте `.ppk` и OpenSSH config без понимания формата. |
+| Задача | Куда перейти | Ключевые проверки |
+|--------|--------------|-------------------|
+| Добавить SSH key в GitHub | [GitHub SSH key](#github-ssh-key) | `.pub` добавлен в нужный GitHub account, `git remote` использует правильный host/alias. |
+| Подключиться к новому VPS как `root` для initial setup | [Bootstrap root key](#bootstrap-root-key) | Root-доступ временный; постоянный доступ должен перейти на non-root admin. |
+| Настроить безопасный постоянный доступ к VPS | [Persistent admin key](#persistent-admin-key) | Вход как admin проверен во второй SSH-сессии, `sudo -v` работает. |
+| Подготовить серверный deploy/automation доступ | [Deploy key](#deploy-key) | Минимальные права, отдельный пользователь, write access только при необходимости. |
+| Подготовить аварийный доступ | [Backup/rescue key](#backuprescue-key) | Passphrase, отдельное хранение, периодическая проверка. |
+| VPS переустановлен или сменился host key | [Ротация, reinstall и compromised keys](#ротация-reinstall-и-compromised-keys) | `REMOTE HOST IDENTIFICATION HAS CHANGED` проверен out-of-band до удаления записи. |
+| Ошибка `Permission denied (publickey)` или wrong key | [Troubleshooting](#troubleshooting) | Проверить `ssh -vT`, `ssh-add -l`, `git remote -v`, `IdentityFile`, user и port. |
 
-## Стандарт именования
+Рекомендуемый порядок для нового VPS:
+
+1. Запустите `scripts/00-preflight-check.sh` по выбранному profile.
+2. Создайте или выберите SSH key на клиентской машине.
+3. Добавьте `.pub` на сервер или в панель провайдера.
+4. Создайте non-root admin user и добавьте ему admin public key.
+5. Проверьте вход как admin во второй SSH-сессии.
+6. Проверьте `sudo -v`.
+7. Только после этого запускайте `scripts/02-security-baseline.sh --profile <profile>` или `scripts/security/ssh-hardening.sh`.
+
+## Базовая модель безопасности
+
+У каждой SSH key pair есть два файла:
+
+- Private key: файл без `.pub`, например `vps_vps-fi-01_admin_ubuntu_pc`.
+- Public key: файл с `.pub`, например `vps_vps-fi-01_admin_ubuntu_pc.pub`.
+
+Правила безопасности:
+
+- Private key генерируется и хранится на клиентской машине.
+- Public key `.pub` можно добавить в GitHub или на сервер в `~/.ssh/authorized_keys`.
+- Команды просмотра и копирования должны читать `.pub`, например `cat key.pub` или `Get-Content key.pub`.
+- Исключение: private key указывается локально в `ssh -i`, чтобы клиент подписал подключение.
+- Не копируйте private key на VPS, в GitHub, чаты, тикеты, email, репозитории или документацию.
+- Если private key попал наружу, считайте его скомпрометированным: удалите public key из GitHub/VPS и создайте новую пару.
+- Комментарий ключа виден в GitHub и `authorized_keys`, поэтому не добавляйте туда secrets, private IP клиентов, tokens или приватные заметки.
+
+Passphrase policy:
+
+| Тип ключа | Passphrase | Почему |
+|-----------|------------|--------|
+| GitHub personal/admin | Рекомендуется | Ключ даёт доступ от имени GitHub account. |
+| VPS root/admin | Рекомендуется | Ключ открывает privileged или sudo-capable доступ. |
+| Deploy/automation | Допустима пустая только при явном принятии риска | Unattended jobs не могут вводить passphrase; компенсируйте минимальными правами и ротацией. |
+| Backup/rescue | Обязательна практически всегда | Ключ хранится отдельно и используется для восстановления доступа. |
+
+## Именование ключей и комментарии
 
 Рекомендуемый формат для новых ключей:
 
 ```text
-<purpose>_<target>_<role-or-user>_<device>
-```
-
-Короткий допустимый формат:
-
-```text
-<purpose>_<account-or-server>_<device>
+<purpose>_<target>_<role>_<device>
 ```
 
 Составные части отвечают на четыре вопроса:
 
-- `purpose`: для чего ключ используется, например `github`, `vps`, `prod-n8n`, `backup`.
-- `target` или `account-or-server`: к какому аккаунту, серверу или окружению относится ключ, например `rokolslab`, `vps-fi-01`, `prod-n8n`.
-- `role-or-user`: какая роль или пользователь получает доступ, например `root`, `admin`, `deploy`, `backup`.
-- `device`: с какого устройства или host ключ используется, например `ubuntu-pc`, `thinkpad`, `mini-pc`.
+- `purpose`: для чего ключ используется, например `github`, `vps`, `deploy`, `backup`.
+- `target`: к какому аккаунту, серверу или окружению относится ключ, например `rokolslab`, `vps-fi-01`, `prod-n8n`.
+- `role`: какая роль или пользователь получает доступ, например `root`, `admin`, `deploy`, `rescue`.
+- `device`: с какого устройства или host ключ используется, например `ubuntu-pc`, `thinkpad`, `mini-pc`, `offline-usb`.
 
 Такое имя помогает быстро понять, какой ключ нужно удалить или заменить после потери ноутбука, смены VPS, ротации deploy-доступа или передачи проекта другому администратору.
 
@@ -58,9 +90,9 @@ bash scripts/01-setup-ssh-keys.sh
 
 ```text
 ~/.ssh/github_rokolslab_admin_ubuntu_pc
-~/.ssh/github_project-admin_work_thinkpad
-~/.ssh/vps-fi-01_root_ubuntu_pc
-~/.ssh/prod-n8n_deploy_mini_pc
+~/.ssh/vps_vps-fi-01_root_ubuntu_pc
+~/.ssh/vps_vps-fi-01_admin_ubuntu_pc
+~/.ssh/deploy_prod-n8n_deploy_mini_pc
 ~/.ssh/backup_vps-fi-01_rescue_offline_usb
 ```
 
@@ -76,7 +108,7 @@ bash scripts/01-setup-ssh-keys.sh
 
 Плохие имена не показывают назначение, сервер, роль или устройство. Их трудно безопасно ротировать и легко случайно использовать не там.
 
-## Стандарт комментария
+Практическое отличие helper script: `scripts/01-setup-ssh-keys.sh` генерирует короткое имя вида `purpose_account-or-server_device`. Если используете helper, включайте роль в значение account/server, например `vps-fi-01_admin`, чтобы итоговое имя оставалось понятным.
 
 Формат комментария:
 
@@ -87,28 +119,24 @@ email | purpose | account/server | role/user | device | date
 Пример:
 
 ```text
-admin@example.com | github | RokolsLab | admin | ubuntu-pc | 2026-05-16
+admin@example.com | vps | vps-fi-01 | admin | ubuntu-pc | 2026-05-16
 ```
 
-Комментарий виден в GitHub и `authorized_keys`, поэтому не добавляйте туда secrets, private IP клиентов, tokens или приватные заметки.
+Текущий helper script использует компактный комментарий `email | purpose | account/server | device | date`. Это допустимо для helper flow, если назначение ключа понятно из имени файла.
 
-## Private/Public Safety Model
+## Платформенные команды
 
-У каждой SSH key pair есть два файла:
+### Матрица платформ
 
-- Private key: файл без `.pub`, например `github_rokolslab_admin_ubuntu_pc`.
-- Public key: файл с `.pub`, например `github_rokolslab_admin_ubuntu_pc.pub`.
+| Клиент | Что использовать | Важные отличия |
+|--------|------------------|----------------|
+| Linux/macOS | OpenSSH в terminal | `~/.ssh`, `chmod`, `ssh-copy-id` обычно доступны. |
+| Windows PowerShell | Windows OpenSSH | Путь `$env:USERPROFILE\.ssh`, права через ACL, `ssh-copy-id` обычно отсутствует. |
+| Git Bash | OpenSSH из Git for Windows | `~/.ssh` обычно указывает на Windows home; удобно для Unix-like команд. |
+| WSL | Linux OpenSSH внутри WSL | Ключи WSL и Windows OpenSSH могут лежать в разных home directories. |
+| PuTTY/Pageant | PuTTYgen, `.ppk`, Pageant | Используйте для PuTTY/Plink workflows; не смешивайте `.ppk` и OpenSSH config без понимания формата. |
 
-Правила безопасности:
-
-- Private key генерируется и хранится на клиентской машине.
-- Public key `.pub` можно добавить в GitHub или на сервер в `~/.ssh/authorized_keys`.
-- Команды просмотра и копирования должны читать `.pub`, например `cat key.pub` или `Get-Content key.pub`.
-- Исключение: private key указывается локально в `ssh -i`, чтобы клиент подписал подключение.
-- Не копируйте private key на VPS, в GitHub, чаты, тикеты, email, репозитории или документацию.
-- Если private key попал наружу, считайте его скомпрометированным: удалите public key из GitHub/VPS и создайте новую пару.
-
-## Linux/macOS OpenSSH
+### Linux/macOS OpenSSH
 
 Подготовьте каталог и config:
 
@@ -119,7 +147,7 @@ touch ~/.ssh/config
 chmod 600 ~/.ssh/config
 ```
 
-Сгенерируйте GitHub key:
+Сгенерируйте ключ:
 
 ```bash
 ssh-keygen -t ed25519 \
@@ -147,7 +175,7 @@ ssh-add ~/.ssh/github_rokolslab_admin_ubuntu_pc
 ssh-add -l
 ```
 
-## Windows OpenSSH и PowerShell
+### Windows OpenSSH и PowerShell
 
 Проверьте, что OpenSSH доступен:
 
@@ -162,7 +190,7 @@ Get-Command ssh-keygen
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.ssh"
 ```
 
-Сгенерируйте GitHub key:
+Сгенерируйте ключ:
 
 ```powershell
 ssh-keygen -t ed25519 `
@@ -221,7 +249,7 @@ icacls "$env:USERPROFILE\.ssh\github_rokolslab_admin_windows_laptop"
 
 Если ACL слишком широкие, исправляйте их осторожно и проверяйте результат. Не применяйте массовые destructive ACL-команды ко всему профилю пользователя.
 
-## Git Bash и WSL
+### Git Bash и WSL
 
 Git Bash удобен, если инструкция использует Unix-like команды: `cat`, `chmod`, `ssh-add`, `ssh-keygen`. В Git Bash `~/.ssh` обычно мапится на Windows home, то есть на тот же каталог, что и `$env:USERPROFILE\.ssh`.
 
@@ -229,7 +257,7 @@ WSL ведёт себя как Linux environment. Его `~/.ssh` обычно �
 
 Не смешивайте agent/config разных сред без причины: ключ, добавленный в Windows `ssh-agent`, не всегда виден внутри WSL, и наоборот.
 
-## PuTTY и Pageant
+### PuTTY и Pageant
 
 PuTTY использует собственный формат private key `.ppk`. Для PuTTY/Plink workflows используйте PuTTYgen для создания или импорта ключей и Pageant для agent-like хранения ключей в сессии.
 
@@ -240,11 +268,25 @@ PuTTY использует собственный формат private key `.ppk
 - Не конвертируйте private key между форматами без passphrase и понятной причины.
 - Не храните и OpenSSH private key, и `.ppk` копию в незащищённых местах.
 
-## GitHub Key
+## GitHub SSH key
+
+GitHub SSH key привязан к GitHub account и используется для интерактивного доступа от имени этого account. Repository deploy key привязан к одному repository и подходит для automation; не используйте personal admin key как deploy key на сервере.
 
 Добавьте именно `.pub` в GitHub: `Settings` → `SSH and GPG keys` → `New SSH key`.
 
-GitHub SSH key привязан к GitHub account и используется для интерактивного доступа от имени этого account. Repository deploy key привязан к одному repository и подходит для automation; не используйте personal admin key как deploy key на сервере.
+Сгенерируйте ключ на клиентской машине:
+
+```bash
+ssh-keygen -t ed25519 \
+  -f ~/.ssh/github_rokolslab_admin_ubuntu_pc \
+  -C "admin@example.com | github | RokolsLab | admin | ubuntu-pc | 2026-05-16"
+```
+
+Покажите public key:
+
+```bash
+cat ~/.ssh/github_rokolslab_admin_ubuntu_pc.pub
+```
 
 Для одного GitHub-аккаунта:
 
@@ -287,12 +329,6 @@ PowerShell проверка с явным ключом без config:
 ssh -T -i "$env:USERPROFILE\.ssh\github_rokolslab_admin_windows_laptop" git@github.com
 ```
 
-Git Bash/WSL проверка с alias:
-
-```bash
-ssh -T git@github-rokolslab
-```
-
 `Host github-rokolslab` — это локальный alias в SSH config. Он говорит SSH-клиенту: подключаться к `github.com`, использовать пользователя `git` и конкретный `IdentityFile`. Git remote должен ссылаться на alias, иначе Git может выбрать другой ключ.
 
 Clone через alias:
@@ -309,54 +345,60 @@ git remote set-url origin git@github-rokolslab:RokolsLab/install_ubuntu.git
 
 Если `ssh -T` проходит, но `git clone` или `git pull` всё равно падает, сначала проверьте `git remote -v`: remote должен использовать тот же host или alias, который вы проверяли.
 
-## VPS Root/Admin Key
+## VPS access keys
 
 Серверный flow должен снижать риск lockout: сначала временный root-доступ от провайдера, затем non-root admin user с ключом, затем проверка второго SSH-сеанса и только после этого hardening. Подробный security flow описан в [Server Security](01-server-security.md) и [Security Hardening Details](01-server-security-hardening.md).
 
-Сгенерируйте root key на клиентской машине, если провайдер не добавил ваш public key при создании VPS:
+### Bootstrap root key
+
+Root key нужен только для initial setup, если провайдер не добавил ваш public key при создании VPS или если root-доступ временно нужен для bootstrap.
+
+Сгенерируйте root key на клиентской машине:
 
 ```bash
 ssh-keygen -t ed25519 \
-  -f ~/.ssh/vps-fi-01_root_ubuntu_pc \
-  -C "admin@example.com | vps-root | vps-fi-01 | root | ubuntu-pc | 2026-05-16"
+  -f ~/.ssh/vps_vps-fi-01_root_ubuntu_pc \
+  -C "admin@example.com | vps | vps-fi-01 | root | ubuntu-pc | 2026-05-16"
 ```
 
 Скопируйте публичный ключ на сервер с Linux/macOS/Git Bash:
 
 ```bash
-ssh-copy-id -i ~/.ssh/vps-fi-01_root_ubuntu_pc.pub -p 22 root@SERVER_IP
+ssh-copy-id -i ~/.ssh/vps_vps-fi-01_root_ubuntu_pc.pub -p 22 root@SERVER_IP
 ```
 
 Проверьте вход до hardening:
 
 ```bash
-ssh -i ~/.ssh/vps-fi-01_root_ubuntu_pc -p 22 root@SERVER_IP
+ssh -i ~/.ssh/vps_vps-fi-01_root_ubuntu_pc -p 22 root@SERVER_IP
 ```
 
-Пример alias:
+Пример root alias:
 
 ```sshconfig
 Host vps-fi-01-root
     HostName SERVER_IP
     User root
     Port 22
-    IdentityFile ~/.ssh/vps-fi-01_root_ubuntu_pc
+    IdentityFile ~/.ssh/vps_vps-fi-01_root_ubuntu_pc
     IdentitiesOnly yes
 ```
 
-После проверки root key создайте отдельного non-root admin/deploy пользователя, добавьте ему public key и проверьте вход до hardening. Не отключайте root/password login, если работает только root-доступ.
+После проверки root key создайте отдельного non-root admin пользователя, добавьте ему public key и проверьте вход до hardening. Не отключайте root/password login, если работает только root-доступ.
 
-Рекомендуемый pre-hardening flow:
+### Persistent admin key
 
-1. Подключитесь как `root` только для initial setup.
-2. Создайте non-root admin user на сервере.
-3. Добавьте public key `.pub` в `~admin/.ssh/authorized_keys`.
-4. Откройте вторую SSH-сессию и проверьте вход как `admin`.
-5. В новой сессии проверьте `sudo -v`.
-6. Оставьте текущую root-сессию открытой до завершения hardening и проверки нового входа.
-7. Запускайте `scripts/security/ssh-hardening.sh` или `scripts/02-security-baseline.sh --profile <profile>` только после успешной проверки non-root key access.
+Admin key — основной ежедневный доступ к VPS. Он должен принадлежать non-root пользователю с `sudo`, а не `root`.
 
-Минимальные server-side команды для создания admin user:
+Сгенерируйте admin key на клиентской машине:
+
+```bash
+ssh-keygen -t ed25519 \
+  -f ~/.ssh/vps_vps-fi-01_admin_ubuntu_pc \
+  -C "admin@example.com | vps | vps-fi-01 | admin | ubuntu-pc | 2026-05-16"
+```
+
+Минимальные server-side команды для создания admin user выполняйте в активной root-сессии:
 
 ```bash
 adduser admin
@@ -367,21 +409,46 @@ chown admin:admin /home/admin/.ssh/authorized_keys
 chmod 600 /home/admin/.ssh/authorized_keys
 ```
 
+Вставляйте только содержимое `~/.ssh/vps_vps-fi-01_admin_ubuntu_pc.pub`. Не вставляйте private key.
+
 Проверка со второй клиентской сессии:
 
 ```bash
-ssh -i ~/.ssh/vps-fi-01_admin_ubuntu_pc admin@SERVER_IP
+ssh -i ~/.ssh/vps_vps-fi-01_admin_ubuntu_pc admin@SERVER_IP
 sudo -v
 ```
 
-## Альтернативы ssh-copy-id для Windows
+Пример admin alias:
+
+```sshconfig
+Host vps-fi-01-admin
+    HostName SERVER_IP
+    User admin
+    Port 22
+    IdentityFile ~/.ssh/vps_vps-fi-01_admin_ubuntu_pc
+    IdentitiesOnly yes
+```
+
+### Safe pre-hardening flow
+
+Рекомендуемый pre-hardening flow:
+
+1. Подключитесь как `root` только для initial setup.
+2. Создайте non-root admin user на сервере.
+3. Добавьте admin public key `.pub` в `~admin/.ssh/authorized_keys`.
+4. Откройте вторую SSH-сессию и проверьте вход как `admin`.
+5. В новой сессии проверьте `sudo -v`.
+6. Оставьте текущую root-сессию открытой до завершения hardening и проверки нового входа.
+7. Запускайте `scripts/security/ssh-hardening.sh` или `scripts/02-security-baseline.sh --profile <profile>` только после успешной проверки non-root key access.
+
+### Альтернативы ssh-copy-id для Windows
 
 В native PowerShell `ssh-copy-id` обычно отсутствует. Безопасный fallback: вывести `.pub`, подключиться к серверу и добавить одну строку в `authorized_keys`.
 
 Покажите public key в PowerShell:
 
 ```powershell
-Get-Content "$env:USERPROFILE\.ssh\vps-fi-01_admin_windows_laptop.pub"
+Get-Content "$env:USERPROFILE\.ssh\vps_vps-fi-01_admin_windows_laptop.pub"
 ```
 
 На сервере добавляйте только public key:
@@ -398,18 +465,20 @@ chmod 600 ~/.ssh/authorized_keys
 После добавления проверьте вход:
 
 ```powershell
-ssh -i "$env:USERPROFILE\.ssh\vps-fi-01_admin_windows_laptop" admin@SERVER_IP
+ssh -i "$env:USERPROFILE\.ssh\vps_vps-fi-01_admin_windows_laptop" admin@SERVER_IP
 ```
 
 Проверьте, что вы не добавили duplicate keys и что `authorized_keys` принадлежит нужному пользователю на сервере. Не вставляйте private key в `authorized_keys`.
 
-## Deploy Key
+## Deploy key
 
-Deploy-ключ используют для отдельного пользователя, например `deploy`, а не для `root`:
+Deploy key используют для отдельного пользователя, например `deploy`, а не для `root` и не для human admin account.
+
+Сгенерируйте ключ на deploy host или CI runner:
 
 ```bash
 ssh-keygen -t ed25519 \
-  -f ~/.ssh/prod-n8n_deploy_mini_pc \
+  -f ~/.ssh/deploy_prod-n8n_deploy_mini_pc \
   -C "ops@example.com | deploy | prod-n8n | deploy | mini-pc | 2026-05-16"
 ```
 
@@ -422,11 +491,17 @@ Policy:
 - При смене команды, сервера или CI runner удалите старый public key из GitHub/VPS и создайте новый.
 - Если deploy private key скомпрометирован, сразу удалите соответствующий public key из `authorized_keys` и GitHub deploy keys.
 
-## Backup/Rescue Key
+## Backup/rescue key
 
-Резервный ключ нужен для восстановления доступа. Храните его отдельно, используйте passphrase и регулярно проверяйте, что он всё ещё работает.
+Backup/rescue key нужен для восстановления доступа. Храните его отдельно, используйте passphrase и регулярно проверяйте, что он всё ещё работает.
 
-Если ключ больше не нужен или мог быть скомпрометирован, удалите его из `~/.ssh/authorized_keys` на сервере и из GitHub, если он там использовался.
+Сгенерируйте ключ на доверенном устройстве или в безопасной offline-среде:
+
+```bash
+ssh-keygen -t ed25519 \
+  -f ~/.ssh/backup_vps-fi-01_rescue_offline_usb \
+  -C "admin@example.com | backup | vps-fi-01 | rescue | offline-usb | 2026-05-16"
+```
 
 Policy:
 
@@ -436,7 +511,11 @@ Policy:
 - Документируйте только имя/назначение ключа и где добавлен его public key; private key material не записывайте в runbooks.
 - При потере устройства удалите связанные public keys из всех GitHub accounts, deploy keys и server `authorized_keys`.
 
-## Existing Key
+Если ключ больше не нужен или мог быть скомпрометирован, удалите его из `~/.ssh/authorized_keys` на сервере и из GitHub, если он там использовался.
+
+## Ротация, reinstall и compromised keys
+
+### Existing key
 
 Существующий ключ можно использовать, если понятны его назначение, где он добавлен и есть ли passphrase. Проверьте права:
 
@@ -447,7 +526,17 @@ chmod 644 ~/.ssh/existing_private_key.pub
 
 Если назначение ключа неизвестно, безопаснее создать новый purpose-specific ключ.
 
-## VPS Переустановлен или Пересоздан
+### Compromised key
+
+Если private key был скопирован наружу, попал в репозиторий, тикет, чат, backup без шифрования или на потерянное устройство:
+
+1. Считайте ключ скомпрометированным.
+2. Удалите соответствующий public key из GitHub account, repository deploy keys и всех server `authorized_keys`.
+3. Создайте новую key pair с новым именем и комментарием.
+4. Обновите `~/.ssh/config`, CI secrets или deploy host config.
+5. Проверьте новый доступ и только потом удаляйте старые локальные references.
+
+### VPS переустановлен или пересоздан
 
 После переустановки VPS часто меняются server host key, user set, `authorized_keys` и иногда IP. Это не то же самое, что ваш client private key:
 
@@ -462,6 +551,15 @@ Linux/macOS/Git Bash:
 ```bash
 ssh-keygen -R SERVER_IP
 ssh-keygen -R '[SERVER_IP]:PORT'
+```
+
+Windows PowerShell:
+
+```powershell
+ssh-keygen -R SERVER_IP
+ssh-keygen -R '[SERVER_IP]:PORT'
+notepad "$env:USERPROFILE\.ssh\known_hosts"
+notepad "$env:USERPROFILE\.ssh\config"
 ```
 
 Проверьте `~/.ssh/config` и замените старый key path:
@@ -492,24 +590,14 @@ Host vps-fi-01-admin
 ssh -i ~/.ssh/new_key user@SERVER_IP
 ```
 
-Windows PowerShell:
-
-```powershell
-ssh-keygen -R SERVER_IP
-ssh-keygen -R '[SERVER_IP]:PORT'
-notepad "$env:USERPROFILE\.ssh\known_hosts"
-notepad "$env:USERPROFILE\.ssh\config"
-ssh -i "$env:USERPROFILE\.ssh\new_key" user@SERVER_IP
-```
-
 Если вы создали новый client key после переустановки, заново добавьте новый `.pub` в `authorized_keys`. Удалите или закомментируйте старый `IdentityFile`, если он больше не используется. Не удаляйте весь `known_hosts` без необходимости: удаляйте только запись конкретного `SERVER_IP` или `[SERVER_IP]:PORT`.
 
-## Перед SSH Hardening
+## Перед SSH hardening
 
-Перед запуском `scripts/security/ssh-hardening.sh` проверьте non-root key access:
+Перед запуском `scripts/security/ssh-hardening.sh` или `scripts/02-security-baseline.sh --profile <profile>` проверьте non-root key access:
 
 ```bash
-ssh -i ~/.ssh/vps-fi-01_admin_ubuntu_pc admin@SERVER_IP
+ssh -i ~/.ssh/vps_vps-fi-01_admin_ubuntu_pc admin@SERVER_IP
 ```
 
 Проверьте `sudo`:
@@ -519,6 +607,8 @@ sudo -v
 ```
 
 Держите текущую SSH-сессию открытой, пока не проверите новый вход во второй SSH-сессии. Скрипт делает backup `/etc/ssh/sshd_config`, запускает `sshd -t` и откатывает config при ошибке. Если non-root `authorized_keys` не найден, script не отключает root/password login и печатает warning.
+
+Если SSH port изменён, сначала разрешите новый порт в firewall и только потом перезапускайте SSH. Для `proxy`/x-ui service ports не открывайте порты заранее; используйте явный `--allow-port <port>` или ручное документированное правило после того, как порт известен.
 
 ## Troubleshooting
 
@@ -543,7 +633,8 @@ git remote set-url origin git@github-rokolslab:RokolsLab/install_ubuntu.git
 Проверьте key path, user и port:
 
 ```bash
-ssh -i ~/.ssh/vps-fi-01_root_ubuntu_pc -p 22 root@SERVER_IP
+ssh -i ~/.ssh/vps_vps-fi-01_root_ubuntu_pc -p 22 root@SERVER_IP
+ssh -i ~/.ssh/vps_vps-fi-01_admin_ubuntu_pc -p 22 admin@SERVER_IP
 ```
 
 Если сервер использует другой порт, обновите `Port` в `~/.ssh/config` и UFW rules на сервере.
@@ -573,8 +664,8 @@ Linux/macOS/Git Bash:
 ```bash
 chmod 700 ~/.ssh
 chmod 600 ~/.ssh/config
-chmod 600 ~/.ssh/vps-fi-01_admin_ubuntu_pc
-chmod 644 ~/.ssh/vps-fi-01_admin_ubuntu_pc.pub
+chmod 600 ~/.ssh/vps_vps-fi-01_admin_ubuntu_pc
+chmod 644 ~/.ssh/vps_vps-fi-01_admin_ubuntu_pc.pub
 ```
 
 Windows checks:
@@ -582,7 +673,7 @@ Windows checks:
 ```powershell
 ssh-add -l
 icacls "$env:USERPROFILE\.ssh\github_rokolslab_admin_windows_laptop"
-ssh -vvv -i "$env:USERPROFILE\.ssh\vps-fi-01_admin_windows_laptop" admin@SERVER_IP
+ssh -vvv -i "$env:USERPROFILE\.ssh\vps_vps-fi-01_admin_windows_laptop" admin@SERVER_IP
 ```
 
 ### Changed host key после VPS reinstall
@@ -603,15 +694,18 @@ ssh -vvv vps-fi-01-admin
 
 ## Что нельзя делать
 
-- Не копируйте приватные ключи в GitHub, чаты, тикеты, email или репозитории.
+- Не копируйте private keys в GitHub, чаты, тикеты, email или репозитории.
 - Не добавляйте в GitHub файл без `.pub`.
+- Не вставляйте private key в `authorized_keys`.
 - Не коммитьте `~/.ssh`, private keys, `.env` и backup secrets.
 - Не используйте один ключ для всех сценариев, если доступы можно разделить.
 - Не оставляйте старые или скомпрометированные ключи в GitHub и `authorized_keys`.
 - Не удаляйте blindly `known_hosts`, если не подтвердили причину смены host key.
+- Не запускайте SSH hardening до проверки non-root key access во второй SSH-сессии и `sudo -v`.
 
 ## See Also
 
 - [Server Security](01-server-security.md) — SSH, UFW и fail2ban baseline.
 - [Security Hardening Details](01-server-security-hardening.md) — advanced SSH hardening notes.
 - [Scripts Catalog](scripts-catalog.md) — где используется SSH key setup в profile flows.
+- [Scripts Order](15-scripts-order.md) — канонический порядок запуска scripts.
